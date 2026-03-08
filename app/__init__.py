@@ -22,7 +22,9 @@ def create_app(config=None) -> Flask:
     from app.printer import Printer
     from app.display_hat import DisplayHat
     from app.modes.momir import MomirMode
+    from app.modes.token import TokenMode
     from app.state import AppState
+    import os
 
     card_manager = CardManager(config.CARDS_DIR)
 
@@ -39,11 +41,13 @@ def create_app(config=None) -> Flask:
         brightness=config.DISPLAY_BRIGHTNESS,
     )
 
-    # Register modes here. Add more modes to this list in the future
-    # (e.g. TokenMode, DecklistMode) and they'll appear in Y-button cycling.
+    tokens_path = os.path.join(config.CARDS_DIR, "tokens.json")
+
+    # Y-button cycles through modes in order.
+    # Add new modes here as they are implemented.
     modes = [
         MomirMode(card_manager, printer),
-        # TokenMode(card_manager, printer),     # future
+        TokenMode(tokens_path, printer),
         # DecklistMode(card_manager, printer),  # future
     ]
     state = AppState(modes)

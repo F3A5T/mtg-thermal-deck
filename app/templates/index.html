@@ -37,6 +37,7 @@
       margin-bottom: 8px;
     }
 
+    /* Momir controls */
     .cmc-row {
       display: flex;
       align-items: center;
@@ -64,6 +65,110 @@
     .card-count.has-cards { color: #50c87a; }
     .card-count.no-cards  { color: #e05050; }
 
+    /* Token controls */
+    .token-name {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #fff;
+      text-align: center;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .token-pt {
+      font-size: 2.4rem;
+      font-weight: bold;
+      color: #d4af37;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .token-type {
+      text-align: center;
+      color: #888;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+
+    .token-pos {
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+    }
+
+    /* Search box */
+    .search-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .search-row input {
+      flex: 1;
+      background: #12121e;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 6px 10px;
+      outline: none;
+    }
+
+    .search-row input:focus { border-color: #d4af37; }
+
+    .search-row button {
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+
+    /* Search results */
+    #search-results {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      border: 1px solid #2a2a40;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .result-item {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #1a1a2e;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .result-item:last-child { border-bottom: none; }
+    .result-item:hover { background: #2a2a40; }
+    .result-item.active { background: #2a2a40; color: #d4af37; }
+    .result-item .pt { color: #d4af37; font-size: 0.8rem; }
+
+    /* Letter bar */
+    .letter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-bottom: 12px;
+    }
+
+    .letter-bar button {
+      padding: 3px 6px;
+      font-size: 0.75rem;
+      min-width: 26px;
+      background: #2a2a40;
+      color: #ccc;
+      border: 1px solid #333;
+    }
+
+    .letter-bar button:hover  { background: #383858; }
+    .letter-bar button.has-tokens { border-color: #d4af37; color: #d4af37; }
+    .letter-bar button.has-tokens:hover { background: #2a2a38; }
+
+    /* Buttons */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -110,7 +215,7 @@
       font-size: 0.9rem;
     }
 
-    #last-card {
+    #last-printed {
       text-align: center;
       color: #666;
       font-size: 0.85rem;
@@ -131,6 +236,8 @@
     }
 
     .divider { border-top: 1px solid #2a2a40; margin: 12px 0; }
+
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -141,15 +248,53 @@
 <div class="panel">
   <div class="label">MODE: <span id="mode-name">{{ status.current_mode }}</span></div>
 
-  <div class="cmc-row">
-    <button onclick="cmc('down')" title="B">&#9660;</button>
-    <div class="cmc-value" id="cmc-val">{{ status.status.cmc }}</div>
-    <button onclick="cmc('up')" title="A">&#9650;</button>
+  <!-- Momir controls -->
+  <div id="momir-controls" class="{{ 'hidden' if status.current_mode != 'Momir Basic' else '' }}">
+    <div class="cmc-row">
+      <button onclick="cmc('down')" title="B">&#9660;</button>
+      <div class="cmc-value" id="cmc-val">{{ status.status.cmc if status.current_mode == 'Momir Basic' else '' }}</div>
+      <button onclick="cmc('up')" title="A">&#9650;</button>
+    </div>
+    <div class="card-count {% if status.current_mode == 'Momir Basic' and status.status.card_count > 0 %}has-cards{% else %}no-cards{% endif %}"
+         id="card-count">
+      {% if status.current_mode == 'Momir Basic' %}
+        {{ status.status.card_count }} card{{ 's' if status.status.card_count != 1 else '' }} available
+      {% endif %}
+    </div>
   </div>
 
-  <div class="card-count {% if status.status.card_count > 0 %}has-cards{% else %}no-cards{% endif %}"
-       id="card-count">
-    {{ status.status.card_count }} card{{ 's' if status.status.card_count != 1 else '' }} available
+  <!-- Token controls -->
+  <div id="token-controls" class="{{ 'hidden' if status.current_mode != 'Tokens' else '' }}">
+    <div class="token-pt" id="token-pt">
+      {% if status.current_mode == 'Tokens' and status.status.token and status.status.token.power %}
+        {{ status.status.token.power }}/{{ status.status.token.toughness }}
+      {% endif %}
+    </div>
+    <div class="token-name" id="token-name">
+      {% if status.current_mode == 'Tokens' and status.status.token %}{{ status.status.token.name }}{% endif %}
+    </div>
+    <div class="token-type" id="token-type">
+      {% if status.current_mode == 'Tokens' and status.status.token %}{{ status.status.token.type_line }}{% endif %}
+    </div>
+    <div class="token-pos" id="token-pos">
+      {% if status.current_mode == 'Tokens' %}{{ status.status.index + 1 }} / {{ status.status.total }}{% endif %}
+    </div>
+
+    <!-- Search -->
+    <div class="search-row">
+      <input type="text" id="token-search" placeholder="Search tokens..." oninput="onSearch(this.value)">
+      <button class="secondary" onclick="clearSearch()">&#x2715;</button>
+    </div>
+    <div id="search-results"></div>
+
+    <!-- Letter bar -->
+    <div class="letter-bar" id="letter-bar"></div>
+
+    <!-- Prev / Next -->
+    <div class="btn-group" style="margin-bottom: 12px;">
+      <button onclick="tokenNav('prev')" title="B">&#9664; PREV</button>
+      <button onclick="tokenNav('next')" title="A">NEXT &#9654;</button>
+    </div>
   </div>
 
   <div class="btn-group">
@@ -157,13 +302,17 @@
   </div>
 
   <div id="status-msg">{{ status.status.status_message or '' }}</div>
-  <div id="last-card">
-    {% if status.status.last_card %}Last: {{ status.status.last_card.name }}{% endif %}
+  <div id="last-printed">
+    {% if status.current_mode == 'Momir Basic' and status.status.last_card %}
+      Last: {{ status.status.last_card.name }}
+    {% elif status.current_mode == 'Tokens' and status.status.last_token %}
+      Last: {{ status.status.last_token.name }}
+    {% endif %}
   </div>
 </div>
 
-<!-- Quick CMC selector -->
-<div class="panel">
+<!-- Quick CMC selector (Momir only) -->
+<div class="panel" id="quick-cmc-panel">
   <div class="label">QUICK SELECT CMC</div>
   <div class="quick-grid">
     {% for n in range(0, 17) %}
@@ -186,24 +335,131 @@
 </div>
 
 <script>
+  // ---------------------------------------------------------------
+  // Token list cache (loaded once when switching to Tokens mode)
+  // ---------------------------------------------------------------
+  let _allTokens = [];        // [{index, name, power, toughness}, ...]
+  let _letterIndex = {};      // { 'A': firstIndexInList, ... }
+  let _tokensLoaded = false;
+
+  async function loadTokenList() {
+    if (_tokensLoaded) return;
+    try {
+      const r = await fetch('/api/tokens');
+      _allTokens = await r.json();
+      _tokensLoaded = true;
+      buildLetterBar();
+    } catch(e) { /* ignore */ }
+  }
+
+  function buildLetterBar() {
+    _letterIndex = {};
+    for (const t of _allTokens) {
+      const ch = t.name[0].toUpperCase();
+      if (!(ch in _letterIndex)) _letterIndex[ch] = t.index;
+    }
+
+    const bar = document.getElementById('letter-bar');
+    bar.innerHTML = '';
+    for (let c = 65; c <= 90; c++) {
+      const ch = String.fromCharCode(c);
+      const btn = document.createElement('button');
+      btn.textContent = ch;
+      if (ch in _letterIndex) {
+        btn.classList.add('has-tokens');
+        btn.onclick = () => gotoToken(_letterIndex[ch]);
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.3';
+      }
+      bar.appendChild(btn);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------
+  function onSearch(q) {
+    const box = document.getElementById('search-results');
+    if (!q.trim()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+    const term = q.toLowerCase();
+    const matches = _allTokens.filter(t => t.name.toLowerCase().includes(term)).slice(0, 40);
+
+    box.innerHTML = '';
+    if (!matches.length) {
+      box.style.display = 'none';
+      return;
+    }
+
+    for (const t of matches) {
+      const el = document.createElement('div');
+      el.className = 'result-item';
+      const pt = (t.power != null) ? `${t.power}/${t.toughness}` : '';
+      el.innerHTML = `<span>${t.name}</span><span class="pt">${pt}</span>`;
+      el.onclick = () => { gotoToken(t.index); clearSearch(); };
+      box.appendChild(el);
+    }
+    box.style.display = 'block';
+  }
+
+  function clearSearch() {
+    document.getElementById('token-search').value = '';
+    const box = document.getElementById('search-results');
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+
+  // ---------------------------------------------------------------
+  // UI update
+  // ---------------------------------------------------------------
+  function updateUI(d) {
+    document.getElementById('mode-name').textContent = d.current_mode;
+    document.getElementById('modes-list').textContent = d.modes.join(' / ');
+
+    const isTokens = d.current_mode === 'Tokens';
+    const isMomir  = d.current_mode === 'Momir Basic';
+
+    document.getElementById('momir-controls').classList.toggle('hidden', !isMomir);
+    document.getElementById('token-controls').classList.toggle('hidden', !isTokens);
+    document.getElementById('quick-cmc-panel').classList.toggle('hidden', !isMomir);
+
+    if (isTokens) loadTokenList();
+
+    const s = d.status;
+
+    if (isMomir) {
+      document.getElementById('cmc-val').textContent = s.cmc ?? '';
+      const c = s.card_count ?? 0;
+      const countEl = document.getElementById('card-count');
+      countEl.textContent = `${c} card${c !== 1 ? 's' : ''} available`;
+      countEl.className = 'card-count ' + (c > 0 ? 'has-cards' : 'no-cards');
+      document.getElementById('last-printed').textContent =
+        s.last_card ? `Last: ${s.last_card.name}` : '';
+    }
+
+    if (isTokens) {
+      const t = s.token;
+      document.getElementById('token-name').textContent = t ? t.name : '—';
+      document.getElementById('token-pt').textContent =
+        (t && t.power != null) ? `${t.power}/${t.toughness}` : '';
+      document.getElementById('token-type').textContent = t ? t.type_line : '';
+      document.getElementById('token-pos').textContent =
+        s.total > 0 ? `${s.index + 1} / ${s.total}` : '';
+      document.getElementById('last-printed').textContent =
+        s.last_token ? `Last: ${s.last_token.name}` : '';
+    }
+
+    document.getElementById('status-msg').textContent = s.status_message || '';
+  }
+
+  // ---------------------------------------------------------------
+  // API calls
+  // ---------------------------------------------------------------
   async function fetchStatus() {
     try {
       const r = await fetch('/api/status');
-      const d = await r.json();
-      document.getElementById('mode-name').textContent = d.current_mode;
-      document.getElementById('modes-list').textContent = d.modes.join(' / ');
-
-      const s = d.status;
-      document.getElementById('cmc-val').textContent = s.cmc ?? '';
-
-      const countEl = document.getElementById('card-count');
-      const c = s.card_count ?? 0;
-      countEl.textContent = `${c} card${c !== 1 ? 's' : ''} available`;
-      countEl.className = 'card-count ' + (c > 0 ? 'has-cards' : 'no-cards');
-
-      document.getElementById('status-msg').textContent = s.status_message || '';
-      document.getElementById('last-card').textContent =
-        s.last_card ? `Last: ${s.last_card.name}` : '';
+      updateUI(await r.json());
     } catch(e) { /* ignore transient fetch errors */ }
   }
 
@@ -225,6 +481,24 @@
     fetchStatus();
   }
 
+  async function tokenNav(action) {
+    const r = await fetch('/api/token', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action}),
+    });
+    updateUI(await r.json());
+  }
+
+  async function gotoToken(index) {
+    const r = await fetch('/api/token', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'goto', index}),
+    });
+    updateUI(await r.json());
+  }
+
   async function printCard() {
     document.getElementById('status-msg').textContent = 'Printing...';
     await fetch('/api/print', {method: 'POST'});
@@ -233,11 +507,13 @@
 
   async function cycleMode() {
     await fetch('/api/mode', {method: 'POST'});
+    _tokensLoaded = false;  // force reload if switching back
     fetchStatus();
   }
 
   async function reloadCards() {
     await fetch('/api/reload', {method: 'POST'});
+    _tokensLoaded = false;
     fetchStatus();
   }
 

@@ -190,6 +190,116 @@ def _save_index(by_cmc: dict, data_dir: Path):
 
 
 # ---------------------------------------------------------------------------
+# Token fetch (Scryfall search API — much smaller than bulk data)
+# ---------------------------------------------------------------------------
+
+def _fetch_tokens(data_dir: Path, dry_run: bool):
+    """Download all unique paper tokens from Scryfall, sorted by name then P/T."""
+    logger.info("Fetching token list from Scryfall...")
+    tokens = []
+    url = "https://api.scryfall.com/cards/search"
+    params = {"q": "t:token game:paper", "unique": "cards", "order": "name"}
+
+    while url:
+        r = requests.get(url, params=params, timeout=30)
+        if r.status_code == 404:
+            break  # no results
+        r.raise_for_status()
+        data = r.json()
+        for card in data.get("data", []):
+            name = card.get("name", "")
+            # Skip double-faced / meld tokens whose name contains "//"
+            if "//" in name:
+                continue
+            image_uris = card.get("image_uris") or {}
+            if not image_uris.get("art_crop"):
+                faces = card.get("card_faces") or []
+                if faces:
+                    image_uris = faces[0].get("image_uris") or {}
+                if not image_uris.get("art_crop"):
+                    continue
+            tokens.append({
+                "id": card.get("id", ""),
+                "name": name,
+                "type_line": card.get("type_line", ""),
+                "power": card.get("power"),
+                "toughness": card.get("toughness"),
+                "image_url": image_uris["art_crop"],
+                "image_path": None,
+            })
+        url = data.get("next_page")
+        params = {}
+        time.sleep(REQUEST_DELAY)
+
+    # Sort: name, then power (numeric), then toughness
+    def _sort_key(t):
+        try:
+            p = int(t["power"]) if t["power"] else 0
+        except (ValueError, TypeError):
+            p = 0
+        try:
+            tgh = int(t["toughness"]) if t["toughness"] else 0
+        except (ValueError, TypeError):
+            tgh = 0
+        return (t["name"].lower(), p, tgh)
+
+    tokens.sort(key=_sort_key)
+
+    # Deduplicate: keep first occurrence of each (name, power, toughness) triple.
+    # Scryfall returns the same token printed in multiple sets; we only want one entry.
+    seen: set[tuple] = set()
+    deduped = []
+    for t in tokens:
+        key = (t["name"].lower(), t["power"], t["toughness"])
+        if key not in seen:
+            seen.add(key)
+            deduped.append(t)
+    removed = len(tokens) - len(deduped)
+    tokens = deduped
+    logger.info("Found %d tokens after dedup (removed %d duplicates)", len(tokens), removed)
+
+    # Download images
+    token_dir = data_dir / "tokens"
+    token_dir.mkdir(parents=True, exist_ok=True)
+    dl = skipped = failed = 0
+
+    for token in tokens:
+        dest = token_dir / f"{token['id']}.jpg"
+        token["image_path"] = str(dest)
+
+        if dest.exists():
+            skipped += 1
+            continue
+        if dry_run:
+            continue
+
+        try:
+            r = requests.get(token["image_url"], timeout=30)
+            r.raise_for_status()
+            dest.write_bytes(r.content)
+            dl += 1
+        except Exception as exc:
+            logger.warning("  FAILED %s: %s", token["name"], exc)
+            token["image_path"] = None
+            failed += 1
+
+        time.sleep(REQUEST_DELAY)
+
+    logger.info("Token images: %d downloaded, %d existed, %d failed", dl, skipped, failed)
+
+    if not dry_run:
+        valid = [
+            {k: v for k, v in t.items() if k != "image_url"}
+            for t in tokens
+            if t.get("image_path") and Path(t["image_path"]).exists()
+        ]
+        index_path = data_dir / "tokens.json"
+        with open(index_path, "w", encoding="utf-8") as f:
+            json.dump(valid, f, indent=2)
+        logger.info("Saved token index: %d tokens -> %s", len(valid), index_path)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -202,14 +312,23 @@ def main():
                    help="Only download cards at these CMC values")
     p.add_argument("--dry-run", action="store_true",
                    help="Parse and filter but skip image downloads")
+    p.add_argument("--tokens-only", action="store_true",
+                   help="Only fetch tokens, skip creature cards")
+    p.add_argument("--no-tokens", action="store_true",
+                   help="Skip token fetch")
     args = p.parse_args()
 
     try:
-        url = _get_bulk_url()
-        by_cmc = _stream_creatures(url, only_cmcs=args.cmc)
-        by_cmc = _download_images(by_cmc, args.data_dir, args.max_per_cmc, args.dry_run)
-        if not args.dry_run:
-            _save_index(by_cmc, args.data_dir)
+        if not args.tokens_only:
+            url = _get_bulk_url()
+            by_cmc = _stream_creatures(url, only_cmcs=args.cmc)
+            by_cmc = _download_images(by_cmc, args.data_dir, args.max_per_cmc, args.dry_run)
+            if not args.dry_run:
+                _save_index(by_cmc, args.data_dir)
+
+        if not args.no_tokens:
+            _fetch_tokens(args.data_dir, args.dry_run)
+
         logger.info("Done.")
     except KeyboardInterrupt:
         logger.info("Interrupted — partial index may exist.")
