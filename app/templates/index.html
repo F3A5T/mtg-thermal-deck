@@ -55,13 +55,7 @@
       line-height: 1;
     }
 
-    .card-count {
-      text-align: center;
-      color: #888;
-      font-size: 0.85rem;
-      margin-bottom: 14px;
-    }
-
+    .card-count { text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 14px; }
     .card-count.has-cards { color: #50c87a; }
     .card-count.no-cards  { color: #e05050; }
 
@@ -74,36 +68,12 @@
       line-height: 1.2;
       margin-bottom: 4px;
     }
+    .token-pt   { font-size: 2.4rem; font-weight: bold; color: #d4af37; text-align: center; margin-bottom: 4px; }
+    .token-type { text-align: center; color: #888; font-size: 0.8rem; margin-bottom: 6px; }
+    .token-pos  { text-align: center; color: #555; font-size: 0.8rem; margin-bottom: 12px; }
 
-    .token-pt {
-      font-size: 2.4rem;
-      font-weight: bold;
-      color: #d4af37;
-      text-align: center;
-      margin-bottom: 4px;
-    }
-
-    .token-type {
-      text-align: center;
-      color: #888;
-      font-size: 0.8rem;
-      margin-bottom: 6px;
-    }
-
-    .token-pos {
-      text-align: center;
-      color: #555;
-      font-size: 0.8rem;
-      margin-bottom: 12px;
-    }
-
-    /* Search box */
-    .search-row {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
+    /* Search */
+    .search-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .search-row input {
       flex: 1;
       background: #12121e;
@@ -115,15 +85,9 @@
       padding: 6px 10px;
       outline: none;
     }
-
     .search-row input:focus { border-color: #d4af37; }
+    .search-row button { padding: 6px 10px; font-size: 0.8rem; }
 
-    .search-row button {
-      padding: 6px 10px;
-      font-size: 0.8rem;
-    }
-
-    /* Search results */
     #search-results {
       max-height: 180px;
       overflow-y: auto;
@@ -132,7 +96,6 @@
       border-radius: 4px;
       display: none;
     }
-
     .result-item {
       padding: 6px 10px;
       cursor: pointer;
@@ -141,20 +104,12 @@
       display: flex;
       justify-content: space-between;
     }
-
     .result-item:last-child { border-bottom: none; }
     .result-item:hover { background: #2a2a40; }
-    .result-item.active { background: #2a2a40; color: #d4af37; }
     .result-item .pt { color: #d4af37; font-size: 0.8rem; }
 
     /* Letter bar */
-    .letter-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 3px;
-      margin-bottom: 12px;
-    }
-
+    .letter-bar { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 12px; }
     .letter-bar button {
       padding: 3px 6px;
       font-size: 0.75rem;
@@ -163,12 +118,56 @@
       color: #ccc;
       border: 1px solid #333;
     }
-
-    .letter-bar button:hover  { background: #383858; }
+    .letter-bar button:hover { background: #383858; }
     .letter-bar button.has-tokens { border-color: #d4af37; color: #d4af37; }
     .letter-bar button.has-tokens:hover { background: #2a2a38; }
 
-    /* Buttons */
+    /* Life tracker */
+    .life-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .life-cell {
+      background: #12121e;
+      border: 2px solid #2a2a40;
+      border-radius: 6px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.1s;
+    }
+    .life-cell.selected { border-color: #d4af37; background: #1c1a0a; }
+
+    .life-player { font-size: 0.7rem; color: #888; margin-bottom: 4px; letter-spacing: 1px; }
+    .life-cell.selected .life-player { color: #d4af37; }
+
+    .life-total {
+      font-size: 2.8rem;
+      font-weight: bold;
+      color: #fff;
+      line-height: 1;
+    }
+    .life-total.low { color: #e05050; }
+
+    .life-adj {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    .life-adj button {
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      background: #2a2a40;
+      color: #ccc;
+      border: 1px solid #444;
+    }
+    .life-adj button:hover { background: #383858; }
+
+    /* Shared buttons */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -208,36 +207,13 @@
     }
     button.print-btn:hover { background: #e04030; }
 
-    #status-msg {
-      text-align: center;
-      min-height: 20px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-    }
+    #status-msg   { text-align: center; min-height: 20px; margin-top: 10px; font-size: 0.9rem; }
+    #last-printed { text-align: center; color: #666; font-size: 0.85rem; margin-top: 6px; min-height: 18px; }
 
-    #last-printed {
-      text-align: center;
-      color: #666;
-      font-size: 0.85rem;
-      margin-top: 6px;
-      min-height: 18px;
-    }
-
-    .quick-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .mode-bar {
-      text-align: center;
-      color: #888;
-      font-size: 0.8rem;
-    }
-
-    .divider { border-top: 1px solid #2a2a40; margin: 12px 0; }
-
-    .hidden { display: none; }
+    .quick-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mode-bar   { text-align: center; color: #888; font-size: 0.8rem; }
+    .divider    { border-top: 1px solid #2a2a40; margin: 12px 0; }
+    .hidden     { display: none; }
   </style>
 </head>
 <body>
@@ -279,26 +255,48 @@
     <div class="token-pos" id="token-pos">
       {% if status.current_mode == 'Tokens' %}{{ status.status.index + 1 }} / {{ status.status.total }}{% endif %}
     </div>
-
-    <!-- Search -->
     <div class="search-row">
       <input type="text" id="token-search" placeholder="Search tokens..." oninput="onSearch(this.value)">
       <button class="secondary" onclick="clearSearch()">&#x2715;</button>
     </div>
     <div id="search-results"></div>
-
-    <!-- Letter bar -->
     <div class="letter-bar" id="letter-bar"></div>
-
-    <!-- Prev / Next -->
     <div class="btn-group" style="margin-bottom: 12px;">
       <button onclick="tokenNav('prev')" title="B">&#9664; PREV</button>
       <button onclick="tokenNav('next')" title="A">NEXT &#9654;</button>
     </div>
   </div>
 
-  <div class="btn-group">
-    <button class="print-btn" onclick="printCard()">PRINT</button>
+  <!-- Life tracker controls -->
+  <div id="life-controls" class="{{ 'hidden' if status.current_mode != 'Life Tracker' else '' }}">
+    <div class="life-grid" id="life-grid">
+      {% for i in range(4) %}
+        <div class="life-cell {{ 'selected' if status.current_mode == 'Life Tracker' and status.status.selected == i else '' }}"
+             id="life-cell-{{ i }}" onclick="lifeSelect({{ i }})">
+          <div class="life-player">P{{ i + 1 }}</div>
+          <div class="life-total {% if status.current_mode == 'Life Tracker' and status.status.life[i] <= 10 %}low{% endif %}"
+               id="life-val-{{ i }}">
+            {% if status.current_mode == 'Life Tracker' %}{{ status.status.life[i] }}{% else %}40{% endif %}
+          </div>
+          <div class="life-adj">
+            <button onclick="lifeAdj({{ i }}, -5, event)">-5</button>
+            <button onclick="lifeAdj({{ i }}, -1, event)">-1</button>
+            <button onclick="lifeAdj({{ i }}, +1, event)">+1</button>
+            <button onclick="lifeAdj({{ i }}, +5, event)">+5</button>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="btn-group">
+      <button class="secondary" onclick="lifeReset()">Reset All to 40</button>
+    </div>
+  </div>
+
+  <!-- Print button (not shown in life mode) -->
+  <div id="print-row" class="{{ 'hidden' if status.current_mode == 'Life Tracker' else '' }}">
+    <div class="btn-group" style="margin-top: 10px;">
+      <button class="print-btn" onclick="printCard()">PRINT</button>
+    </div>
   </div>
 
   <div id="status-msg">{{ status.status.status_message or '' }}</div>
@@ -336,10 +334,10 @@
 
 <script>
   // ---------------------------------------------------------------
-  // Token list cache (loaded once when switching to Tokens mode)
+  // Token list cache
   // ---------------------------------------------------------------
-  let _allTokens = [];        // [{index, name, power, toughness}, ...]
-  let _letterIndex = {};      // { 'A': firstIndexInList, ... }
+  let _allTokens = [];
+  let _letterIndex = {};
   let _tokensLoaded = false;
 
   async function loadTokenList() {
@@ -349,7 +347,7 @@
       _allTokens = await r.json();
       _tokensLoaded = true;
       buildLetterBar();
-    } catch(e) { /* ignore */ }
+    } catch(e) {}
   }
 
   function buildLetterBar() {
@@ -358,7 +356,6 @@
       const ch = t.name[0].toUpperCase();
       if (!(ch in _letterIndex)) _letterIndex[ch] = t.index;
     }
-
     const bar = document.getElementById('letter-bar');
     bar.innerHTML = '';
     for (let c = 65; c <= 90; c++) {
@@ -376,22 +373,13 @@
     }
   }
 
-  // ---------------------------------------------------------------
-  // Search
-  // ---------------------------------------------------------------
   function onSearch(q) {
     const box = document.getElementById('search-results');
     if (!q.trim()) { box.style.display = 'none'; box.innerHTML = ''; return; }
-
     const term = q.toLowerCase();
     const matches = _allTokens.filter(t => t.name.toLowerCase().includes(term)).slice(0, 40);
-
     box.innerHTML = '';
-    if (!matches.length) {
-      box.style.display = 'none';
-      return;
-    }
-
+    if (!matches.length) { box.style.display = 'none'; return; }
     for (const t of matches) {
       const el = document.createElement('div');
       el.className = 'result-item';
@@ -419,10 +407,13 @@
 
     const isTokens = d.current_mode === 'Tokens';
     const isMomir  = d.current_mode === 'Momir Basic';
+    const isLife   = d.current_mode === 'Life Tracker';
 
     document.getElementById('momir-controls').classList.toggle('hidden', !isMomir);
     document.getElementById('token-controls').classList.toggle('hidden', !isTokens);
+    document.getElementById('life-controls').classList.toggle('hidden', !isLife);
     document.getElementById('quick-cmc-panel').classList.toggle('hidden', !isMomir);
+    document.getElementById('print-row').classList.toggle('hidden', isLife);
 
     if (isTokens) loadTokenList();
 
@@ -450,7 +441,22 @@
         s.last_token ? `Last: ${s.last_token.name}` : '';
     }
 
-    document.getElementById('status-msg').textContent = s.status_message || '';
+    if (isLife) {
+      updateLifeUI(s);
+      document.getElementById('last-printed').textContent = '';
+    }
+
+    if (!isLife) document.getElementById('status-msg').textContent = s.status_message || '';
+  }
+
+  function updateLifeUI(s) {
+    for (let i = 0; i < 4; i++) {
+      const val = document.getElementById(`life-val-${i}`);
+      const cell = document.getElementById(`life-cell-${i}`);
+      val.textContent = s.life[i];
+      val.className = 'life-total' + (s.life[i] <= 10 ? ' low' : '');
+      cell.classList.toggle('selected', s.selected === i);
+    }
   }
 
   // ---------------------------------------------------------------
@@ -460,13 +466,12 @@
     try {
       const r = await fetch('/api/status');
       updateUI(await r.json());
-    } catch(e) { /* ignore transient fetch errors */ }
+    } catch(e) {}
   }
 
   async function cmc(action) {
     await fetch('/api/cmc', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action}),
     });
     fetchStatus();
@@ -474,8 +479,7 @@
 
   async function setCmc(value) {
     await fetch('/api/cmc', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({value}),
     });
     fetchStatus();
@@ -483,8 +487,7 @@
 
   async function tokenNav(action) {
     const r = await fetch('/api/token', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action}),
     });
     updateUI(await r.json());
@@ -492,11 +495,36 @@
 
   async function gotoToken(index) {
     const r = await fetch('/api/token', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action: 'goto', index}),
     });
     updateUI(await r.json());
+  }
+
+  async function lifeSelect(player) {
+    const r = await fetch('/api/life', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'select', player}),
+    });
+    updateLifeUI(await r.json());
+  }
+
+  async function lifeAdj(player, amount, event) {
+    event.stopPropagation();  // don't trigger lifeSelect on the cell
+    const action = amount > 0 ? 'increment' : 'decrement';
+    const r = await fetch('/api/life', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action, player, amount: Math.abs(amount)}),
+    });
+    updateLifeUI(await r.json());
+  }
+
+  async function lifeReset() {
+    const r = await fetch('/api/life', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'reset'}),
+    });
+    updateLifeUI(await r.json());
   }
 
   async function printCard() {
@@ -507,7 +535,7 @@
 
   async function cycleMode() {
     await fetch('/api/mode', {method: 'POST'});
-    _tokensLoaded = false;  // force reload if switching back
+    _tokensLoaded = false;
     fetchStatus();
   }
 
@@ -517,7 +545,6 @@
     fetchStatus();
   }
 
-  // Poll for updates (handles print completion, display sync)
   setInterval(fetchStatus, 2000);
 </script>
 </body>

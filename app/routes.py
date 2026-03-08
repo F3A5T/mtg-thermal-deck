@@ -92,6 +92,39 @@ def api_token():
     return jsonify(state.get_status())
 
 
+@bp.route("/api/life", methods=["POST"])
+def api_life():
+    """Adjust life totals.
+
+    Body (JSON):
+      { "action": "increment" | "decrement", "player": 0-3, "amount": <int> }
+      { "action": "select", "player": 0-3 }
+      { "action": "reset" }
+    """
+    from app.modes.life import LifeMode
+    state = current_app.app_state  # type: ignore[attr-defined]
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+
+    life_mode = next((m for m in state.modes if isinstance(m, LifeMode)), None)
+    if life_mode is None:
+        return jsonify({"error": "LifeMode not registered"}), 404
+
+    player = int(data.get("player", life_mode._selected))
+    amount = int(data.get("amount", 1))
+
+    if action == "increment":
+        life_mode._life[player] += amount
+    elif action == "decrement":
+        life_mode._life[player] -= amount
+    elif action == "select":
+        life_mode._selected = player
+    elif action == "reset":
+        life_mode.reset()
+
+    return jsonify(life_mode.get_status())
+
+
 @bp.route("/api/reload", methods=["POST"])
 def api_reload():
     """Reload card index from disk (after running fetch_cards.py)."""

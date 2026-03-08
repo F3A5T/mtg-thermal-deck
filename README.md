@@ -92,6 +92,22 @@ Scroll through every paper token sorted alphabetically, then by P/T.
 | X | Jump to first token under this letter |
 | Hold X | Cancel, go back without jumping |
 
+### Life Tracker
+
+4-player life totals starting at 40. The display splits into four quadrants, one per player. The selected player is highlighted with a gold border.
+
+| Button | Action |
+|---|---|
+| A | Select next player (cycles 1→2→3→4→1) |
+| B | Selected player −1 life |
+| X | Selected player +1 life |
+| Hold B | Selected player −5 life |
+| Hold X | Selected player +5 life |
+| Hold A | Reset all players to 40 |
+| Y | Cycle to next mode |
+
+Life total turns red at 10 or below.
+
 ### Info
 
 Shows the Pi's IP address, hostname, and uptime. Useful for finding the web UI address after a fresh boot.
@@ -106,6 +122,7 @@ Available at `http://<pi-ip>:5000` from any device on the network. The **Info** 
 
 - **Momir Basic** — CMC spinner, quick-select buttons 0–16, Print
 - **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
+- **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
 - **System** — cycle mode, reload card database
 
 ## Print format
