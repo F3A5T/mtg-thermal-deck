@@ -70,10 +70,22 @@ class InfoMode(BaseMode):
     def name(self) -> str:
         return "Info"
 
+    def help_lines(self) -> list:
+        return [
+            ("", "Shows this device's network IP,"),
+            ("", "hostname, and uptime."),
+            ("Y", "Next mode"),
+            ("Hold Y", "This help"),
+        ]
+
     def handle_button(self, button: str) -> None:
-        pass  # nothing to do; Y is handled by AppState
+        if button == "Y_HOLD_FIRST":
+            self._toggle_help()
 
     def render(self, draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
+        if self._show_help:
+            self._render_help_overlay(draw, width, height)
+            return
         draw.text((10, 8), "SYSTEM INFO", font=_FONT_LABEL, fill=_GOLD)
 
         # Hostname

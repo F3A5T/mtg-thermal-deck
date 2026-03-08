@@ -81,9 +81,13 @@ class MomirMode(BaseMode):
         return "Momir Basic"
 
     def handle_button(self, button: str) -> None:
+        if button == "Y_HOLD_FIRST":
+            self._toggle_help()
+            return
+        if self._show_help:
+            return
         if self._printing:
-            return  # block input during print
-
+            return
         if button == "A":
             self.cmc = min(self.MAX_CMC, self.cmc + 1)
             self.status_message = ""
@@ -92,9 +96,20 @@ class MomirMode(BaseMode):
             self.status_message = ""
         elif button == "X":
             self._trigger_print()
-        # Y is handled externally by AppState
+
+    def help_lines(self) -> list:
+        return [
+            ("A", "Increase CMC"),
+            ("B", "Decrease CMC"),
+            ("X", "Print random creature"),
+            ("Y", "Next mode"),
+            ("Hold Y", "This help"),
+        ]
 
     def render(self, draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
+        if self._show_help:
+            self._render_help_overlay(draw, width, height)
+            return
         # --- Mode title ---
         draw.text((10, 8), "MOMIR BASIC", font=_FONT_TITLE, fill=_GOLD)
 

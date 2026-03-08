@@ -166,6 +166,20 @@ class TokenMode(BaseMode):
         else:
             self._handle_browse_mode(button)
 
+    def help_lines(self) -> list:
+        return [
+            ("A", "Next token"),
+            ("B", "Previous token"),
+            ("X", "Print selected token"),
+            ("Hold X", "Enter letter filter"),
+            ("Hold Y", "Enter letter filter"),
+            ("Y", "Next mode"),
+            ("  In letter filter:", ""),
+            ("A / B", "Cycle letters"),
+            ("X", "Jump to letter"),
+            ("Hold X", "Cancel filter"),
+        ]
+
     def _handle_browse_mode(self, button: str) -> None:
         if self._printing or not self._tokens:
             return
@@ -177,8 +191,8 @@ class TokenMode(BaseMode):
             self.status_message = ""
         elif button == "X":
             self._trigger_print()
-        elif button == "X_HOLD_FIRST":
-            # Enter letter-select mode on first hold only (ignore repeats)
+        elif button in ("X_HOLD_FIRST", "Y_HOLD_FIRST"):
+            # Enter letter-select mode (hold X or hold Y both work)
             if self._letters:
                 cur_letter = self._tokens[self._index].name[0].upper()
                 if cur_letter in self._letters:
@@ -248,7 +262,7 @@ class TokenMode(BaseMode):
         draw.text((width - bbox[2] - 8, 140), pos, font=_FONT_SM, fill=_GRAY)
 
         draw.line([(0, 196), (width, 196)], fill=_DIM, width=1)
-        hints = [(0, "A:NEXT"), (width // 4, "B:PREV"), (width // 2, "X:PRINT"), (3 * width // 4, "HOLD:FILTER")]
+        hints = [(0, "A:NEXT"), (width // 4, "B:PREV"), (width // 2, "X:PRINT"), (3 * width // 4, "Y/X:FILTER")]
         for x, label in hints:
             draw.text((x + 4, 204), label, font=_FONT_SM, fill=_GOLD)
 

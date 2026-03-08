@@ -60,7 +60,24 @@ class LifeMode(BaseMode):
     def name(self) -> str:
         return "Life Tracker"
 
+    def help_lines(self) -> list:
+        return [
+            ("A", "Select next player"),
+            ("B", "-1 life"),
+            ("X", "+1 life"),
+            ("Hold B", "-5 life (repeats)"),
+            ("Hold X", "+5 life (repeats)"),
+            ("Hold A", "Reset all to 40"),
+            ("Y", "Next mode"),
+            ("Hold Y", "This help"),
+        ]
+
     def handle_button(self, button: str) -> None:
+        if button == "Y_HOLD_FIRST":
+            self._toggle_help()
+            return
+        if self._show_help:
+            return
         if button == "A":
             self._selected = (self._selected + 1) % _NUM_PLAYERS
         elif button in ("A_HOLD_FIRST", "A_HOLD"):
@@ -81,6 +98,9 @@ class LifeMode(BaseMode):
             self._life[self._selected] += 5
 
     def render(self, draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
+        if self._show_help:
+            self._render_help_overlay(draw, width, height)
+            return
         mid_x = width // 2
         mid_y = height // 2
 
