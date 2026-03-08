@@ -98,32 +98,27 @@ class Printer:
 
     def _print_text(self, card: "Card"):
         p = self._p
-        sep = "\x1b\x61\x01" + ("─" * 32) + "\n\x1b\x61\x00"  # centred separator
-
-        # Name — double-width bold
-        p.set(bold=True, double_width=True, double_height=False, align="center")
+        # Name — bold, centred, normal size
+        p.set(bold=True, align="center", custom_size=True, width=1, height=1)
         p.text(card.name + "\n")
-        p.set(bold=False, double_width=False, align="left")
+        p.set(bold=False, align="left", custom_size=True, width=1, height=1)
 
         # Mana cost
         if card.mana_cost:
             p.text(f"Cost: {card.mana_cost}\n")
 
         # Type line
-        p.text(sep)
         p.text(card.type_line + "\n")
-
-        # Power / Toughness
-        if card.power is not None and card.toughness is not None:
-            p.text(sep)
-            p.set(bold=True, align="center")
-            p.text(f"{card.power} / {card.toughness}\n")
-            p.set(bold=False, align="left")
 
         # Oracle / rules text
         oracle = getattr(card, "oracle_text", "") or ""
         if oracle:
-            p.text(sep)
             for line in oracle.split("\n"):
-                for wrapped in textwrap.wrap(line, width=32) or [""]:
+                for wrapped in textwrap.wrap(line, width=42) or [""]:
                     p.text(wrapped + "\n")
+
+        # Power / Toughness
+        if card.power is not None and card.toughness is not None:
+            p.set(bold=True, align="center", custom_size=True, width=1, height=1)
+            p.text(f"{card.power} / {card.toughness}\n")
+            p.set(bold=False, align="left", custom_size=True, width=1, height=1)

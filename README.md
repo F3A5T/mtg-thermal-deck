@@ -133,10 +133,11 @@ Available at `http://<pi-ip>:5000` from any device on the network. The **Info** 
 
 Each printed card has:
 1. **Art crop** — full-width artwork image
-2. **Card name** — bold, double-width
+2. **Card name** — bold, centred
 3. **Mana cost** — text (e.g. `{3}{G}{G}`)
 4. **Type line** — (e.g. `Legendary Creature — Elf Warrior`)
-5. **Power / Toughness** — centred, bold
+5. **Rules text** — word-wrapped
+6. **Power / Toughness** — centred, bold (creatures only)
 
 ## Development without hardware
 
