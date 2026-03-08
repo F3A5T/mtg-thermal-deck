@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:jackgovier.co.uk)",
+      "WebFetch(domain:pinout.xyz)",
+      "WebFetch(domain:github.com)",
+      "Bash(chmod +x /home/flux/code/pi-setup/setup_display_hat_mini.sh)"
+    ]
+  }
+}
