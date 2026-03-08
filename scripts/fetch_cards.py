@@ -95,6 +95,11 @@ def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
                 faces = card.get("card_faces") or []
                 mana_cost = faces[0].get("mana_cost", "") if faces else ""
 
+            oracle_text = card.get("oracle_text") or ""
+            if not oracle_text:
+                faces = card.get("card_faces") or []
+                oracle_text = faces[0].get("oracle_text", "") if faces else ""
+
             entry = {
                 "id": card.get("id", ""),
                 "name": card.get("name", ""),
@@ -103,6 +108,7 @@ def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
                 "type_line": type_line,
                 "power": card.get("power"),
                 "toughness": card.get("toughness"),
+                "oracle_text": oracle_text,
                 "image_url": image_uris["art_crop"],
                 "image_path": None,
             }
@@ -218,12 +224,18 @@ def _fetch_tokens(data_dir: Path, dry_run: bool):
                     image_uris = faces[0].get("image_uris") or {}
                 if not image_uris.get("art_crop"):
                     continue
+            oracle_text = card.get("oracle_text") or ""
+            if not oracle_text:
+                faces = card.get("card_faces") or []
+                oracle_text = faces[0].get("oracle_text", "") if faces else ""
+
             tokens.append({
                 "id": card.get("id", ""),
                 "name": name,
                 "type_line": card.get("type_line", ""),
                 "power": card.get("power"),
                 "toughness": card.get("toughness"),
+                "oracle_text": oracle_text,
                 "image_url": image_uris["art_crop"],
                 "image_path": None,
             })

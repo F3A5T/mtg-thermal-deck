@@ -16,6 +16,7 @@ class Card:
         self.type_line: str = data.get("type_line", "")
         self.power: Optional[str] = data.get("power")
         self.toughness: Optional[str] = data.get("toughness")
+        self.oracle_text: str = data.get("oracle_text", "")
         self.image_path: Optional[str] = data.get("image_path")
 
     def to_dict(self) -> dict:
@@ -27,6 +28,7 @@ class Card:
             "type_line": self.type_line,
             "power": self.power,
             "toughness": self.toughness,
+            "oracle_text": self.oracle_text,
             "image_path": self.image_path,
         }
 

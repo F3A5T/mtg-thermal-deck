@@ -1,5 +1,6 @@
 import logging
 import os
+import textwrap
 from typing import TYPE_CHECKING
 
 from PIL import Image
@@ -118,3 +119,11 @@ class Printer:
             p.set(bold=True, align="center")
             p.text(f"{card.power} / {card.toughness}\n")
             p.set(bold=False, align="left")
+
+        # Oracle / rules text
+        oracle = getattr(card, "oracle_text", "") or ""
+        if oracle:
+            p.text(sep)
+            for line in oracle.split("\n"):
+                for wrapped in textwrap.wrap(line, width=32) or [""]:
+                    p.text(wrapped + "\n")

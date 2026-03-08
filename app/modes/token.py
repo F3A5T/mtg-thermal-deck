@@ -69,9 +69,10 @@ class Token:
         self.id         = data.get("id", "")
         self.name       = data.get("name", "Unknown")
         self.type_line  = data.get("type_line", "")
-        self.power      = data.get("power")
-        self.toughness  = data.get("toughness")
-        self.image_path = data.get("image_path")
+        self.power       = data.get("power")
+        self.toughness   = data.get("toughness")
+        self.oracle_text = data.get("oracle_text", "")
+        self.image_path  = data.get("image_path")
 
     def to_dict(self) -> dict:
         return {
@@ -80,6 +81,7 @@ class Token:
             "type_line": self.type_line,
             "power": self.power,
             "toughness": self.toughness,
+            "oracle_text": self.oracle_text,
             "image_path": self.image_path,
         }
 
