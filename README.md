@@ -58,7 +58,7 @@ sudo systemctl stop mtg-console      # stop
 
 ## Modes
 
-Press **Y** to cycle through modes. The current mode name is shown at the top of every screen.
+Press **Y** to cycle through modes. **Hold Y** on any mode to show its help overlay.
 
 ### Momir Basic
 
@@ -70,18 +70,20 @@ Pick a CMC and print a random creature at that cost.
 | B | Decrement CMC |
 | X | Print a random creature at the current CMC |
 | Y | Cycle to next mode |
+| Hold Y | Help overlay |
 
 ### Token Printer
 
-Scroll through every paper token sorted alphabetically, then by P/T.
+Scroll through every paper token sorted alphabetically, then by P/T. Switching to this mode automatically opens the letter filter.
 
 | Button | Action |
 |---|---|
 | A | Next token |
 | B | Previous token |
 | X | Print selected token |
-| Hold X (0.8s) | Enter letter-filter mode |
+| Hold X | Enter letter-filter mode |
 | Y | Cycle to next mode |
+| Hold Y | Help overlay |
 
 **Letter-filter mode** — jump straight to a letter of the alphabet:
 
@@ -101,10 +103,11 @@ Scroll through every paper token sorted alphabetically, then by P/T.
 | A | Select next player (cycles 1→2→3→4→1) |
 | B | Selected player −1 life |
 | X | Selected player +1 life |
-| Hold B | Selected player −5 life |
-| Hold X | Selected player +5 life |
+| Hold B | Selected player −5 life (repeats) |
+| Hold X | Selected player +5 life (repeats) |
 | Hold A | Reset all players to 40 |
 | Y | Cycle to next mode |
+| Hold Y | Help overlay |
 
 Life total turns red at 10 or below.
 
@@ -115,6 +118,7 @@ Shows the Pi's IP address, hostname, and uptime. Useful for finding the web UI a
 | Button | Action |
 |---|---|
 | Y | Cycle to next mode |
+| Hold Y | Help overlay |
 
 ## Web UI
 
@@ -162,7 +166,8 @@ All settings in [config.py](config.py) can be overridden with environment variab
 
 1. Create `app/modes/your_mode.py` subclassing `BaseMode`
 2. Implement `name`, `render()`, `handle_button()`, and `get_status()`
-3. Register an instance in the `modes = [...]` list in `app/__init__.py`
+3. Optionally override `on_activate()` to reset state when the mode is switched to
+4. Register an instance in the `modes = [...]` list in `app/__init__.py`
 
 Planned future modes:
 - **Decklist mode** — import a Moxfield deck URL and print cards from it

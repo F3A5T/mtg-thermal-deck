@@ -17,6 +17,7 @@ class AppState:
 
     def next_mode(self):
         self._index = (self._index + 1) % len(self.modes)
+        self.current_mode.on_activate()
 
     def get_status(self) -> dict:
         return {

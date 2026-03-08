@@ -127,7 +127,7 @@ class DisplayHat:
 
             else:
                 # Released — fire Y now only if it was a short press (no hold fired)
-                if label == BUTTON_Y and self._last_repeat[hw_btn] is None:
+                if label == BUTTON_Y and self._press_start[hw_btn] is not None and self._last_repeat[hw_btn] is None:
                     if self._callback:
                         self._callback(label)
                 self._press_start[hw_btn] = None

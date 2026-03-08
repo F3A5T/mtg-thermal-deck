@@ -136,6 +136,15 @@ class TokenMode(BaseMode):
                 self._letter_index[ch] = i
         self._letters = sorted(self._letter_index.keys())
 
+    def on_activate(self) -> None:
+        """Enter letter filter automatically when switching to this mode."""
+        self._show_help = False
+        if self._letters:
+            if self._tokens:
+                cur_letter = self._tokens[self._index].name[0].upper()
+                self._cur_letter_pos = self._letters.index(cur_letter) if cur_letter in self._letters else 0
+            self._letter_mode = True
+
     def reload(self):
         self._tokens.clear()
         self._index = 0
@@ -161,6 +170,11 @@ class TokenMode(BaseMode):
         return "Tokens"
 
     def handle_button(self, button: str) -> None:
+        if button == "Y_HOLD_FIRST":
+            self._toggle_help()
+            return
+        if self._show_help:
+            return
         if self._letter_mode:
             self._handle_letter_mode(button)
         else:
@@ -172,8 +186,8 @@ class TokenMode(BaseMode):
             ("B", "Previous token"),
             ("X", "Print selected token"),
             ("Hold X", "Enter letter filter"),
-            ("Hold Y", "Enter letter filter"),
             ("Y", "Next mode"),
+            ("Hold Y", "This help"),
             ("  In letter filter:", ""),
             ("A / B", "Cycle letters"),
             ("X", "Jump to letter"),
@@ -191,8 +205,8 @@ class TokenMode(BaseMode):
             self.status_message = ""
         elif button == "X":
             self._trigger_print()
-        elif button in ("X_HOLD_FIRST", "Y_HOLD_FIRST"):
-            # Enter letter-select mode (hold X or hold Y both work)
+        elif button == "X_HOLD_FIRST":
+            # Enter letter-select mode
             if self._letters:
                 cur_letter = self._tokens[self._index].name[0].upper()
                 if cur_letter in self._letters:
@@ -219,7 +233,9 @@ class TokenMode(BaseMode):
             self.status_message = ""
 
     def render(self, draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
-        if self._letter_mode:
+        if self._show_help:
+            self._render_help_overlay(draw, width, height)
+        elif self._letter_mode:
             self._render_letter_select(draw, width, height)
         else:
             self._render_browse(draw, width, height)
@@ -262,7 +278,7 @@ class TokenMode(BaseMode):
         draw.text((width - bbox[2] - 8, 140), pos, font=_FONT_SM, fill=_GRAY)
 
         draw.line([(0, 196), (width, 196)], fill=_DIM, width=1)
-        hints = [(0, "A:NEXT"), (width // 4, "B:PREV"), (width // 2, "X:PRINT"), (3 * width // 4, "Y/X:FILTER")]
+        hints = [(0, "A:NEXT"), (width // 4, "B:PREV"), (width // 2, "X:PRINT"), (3 * width // 4, "HX:FILTER")]
         for x, label in hints:
             draw.text((x + 4, 204), label, font=_FONT_SM, fill=_GOLD)
 

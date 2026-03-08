@@ -7,8 +7,7 @@ in app/__init__.py.
 
 Hold Y fires Y_HOLD_FIRST (passed through from AppState which only catches
 plain "Y"). Call self._toggle_help() from handle_button to show the help
-overlay, or use Y_HOLD_FIRST for a custom action (e.g. TokenMode uses it
-to enter the letter filter instead).
+overlay.
 """
 
 from abc import ABC, abstractmethod
@@ -60,6 +59,9 @@ class BaseMode(ABC):
         Plain 'Y' is consumed by AppState for mode cycling.
         'Y_HOLD_FIRST' reaches the mode — use it for help or a custom action.
         """
+
+    def on_activate(self) -> None:
+        """Called when this mode becomes the active mode. Override to reset state."""
 
     def get_status(self) -> dict:
         """Return a JSON-serialisable status dict for the web API."""
