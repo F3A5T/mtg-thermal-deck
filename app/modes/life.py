@@ -63,14 +63,20 @@ class LifeMode(BaseMode):
     def handle_button(self, button: str) -> None:
         if button == "A":
             self._selected = (self._selected + 1) % _NUM_PLAYERS
-        elif button == "A_HOLD":
+        elif button in ("A_HOLD_FIRST", "A_HOLD"):
             self._life = [_START_LIFE] * _NUM_PLAYERS
         elif button == "B":
             self._life[self._selected] -= 1
+        elif button == "B_HOLD_FIRST":
+            # First hold: we already applied -1 on press, add -4 to total -5
+            self._life[self._selected] -= 4
         elif button == "B_HOLD":
             self._life[self._selected] -= 5
         elif button == "X":
             self._life[self._selected] += 1
+        elif button == "X_HOLD_FIRST":
+            # First hold: we already applied +1 on press, add +4 to total +5
+            self._life[self._selected] += 4
         elif button == "X_HOLD":
             self._life[self._selected] += 5
 

@@ -114,14 +114,15 @@ class DisplayHat:
                     self._callback(label)
 
             elif pressed and was_pressed:
-                # Held — fire _HOLD once threshold is reached, then repeat
+                # Held — fire _HOLD_FIRST once at threshold, then _HOLD repeatedly
                 start = self._press_start.get(hw_btn)
                 if start and now - start >= self.LONG_PRESS_S:
                     last = self._last_repeat[hw_btn]
                     if last is None or now - last >= self.REPEAT_S:
+                        is_first = last is None
                         self._last_repeat[hw_btn] = now
                         if self._callback:
-                            self._callback(label + "_HOLD")
+                            self._callback(label + ("_HOLD_FIRST" if is_first else "_HOLD"))
 
             else:
                 # Released

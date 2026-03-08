@@ -177,9 +177,9 @@ class TokenMode(BaseMode):
             self.status_message = ""
         elif button == "X":
             self._trigger_print()
-        elif button == "X_HOLD":
+        elif button == "X_HOLD_FIRST":
+            # Enter letter-select mode on first hold only (ignore repeats)
             if self._letters:
-                # Snap letter cursor to the letter of the current token
                 cur_letter = self._tokens[self._index].name[0].upper()
                 if cur_letter in self._letters:
                     self._cur_letter_pos = self._letters.index(cur_letter)
@@ -199,8 +199,8 @@ class TokenMode(BaseMode):
             self._index = self._letter_index[letter]
             self._letter_mode = False
             self.status_message = ""
-        elif button == "X_HOLD":
-            # Cancel — return without jumping
+        elif button == "X_HOLD_FIRST":
+            # Cancel — return without jumping (first hold only, ignore repeats)
             self._letter_mode = False
             self.status_message = ""
 
