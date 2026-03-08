@@ -4,12 +4,15 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/mtg-console
-ExecStart=/home/pi/mtg-console/.venv/bin/python run.py
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/mtg-console
+ExecStart=/home/dev/mtg-console/.venv/bin/python run.py
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
 # Uncomment to run with mock hardware during testing:
 # Environment=MOCK_PRINTER=true
 # Environment=MOCK_DISPLAY=true
