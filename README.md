@@ -29,20 +29,38 @@ bash scripts/setup.sh
 sudo reboot
 ```
 
-After reboot the service starts automatically. Fetch card data before first use:
+After reboot the service starts automatically.
+
+### Download card database (recommended: run locally, then rsync)
+
+The Pi Zero is slow at downloading thousands of images. Run `fetch_cards.py` on your
+development machine, then rsync the `data/` folder over:
 
 ```bash
-cd ~/mtg-console
-source .venv/bin/activate
+# On this machine — install deps if needed
+pip install requests ijson
 
-# Full card + token database (downloads artwork — takes a while on Pi Zero)
+# Full card + token database
 python scripts/fetch_cards.py
 
-# Tokens only (much faster)
+# Tokens only (faster)
 python scripts/fetch_cards.py --tokens-only
 
 # Quick test — 3 cards per CMC, no tokens
 python scripts/fetch_cards.py --max-per-cmc 3 --no-tokens
+
+# Rsync data to Pi after download
+rsync -av data/ pi:/home/dev/mtg-console/data/
+
+# Reload the running service so it picks up the new data
+ssh pi "curl -s -X POST http://localhost:5000/api/reload"
+```
+
+To fetch on the Pi directly:
+
+```bash
+cd ~/mtg-console && source .venv/bin/activate
+python scripts/fetch_cards.py
 ```
 
 ## Service management
@@ -94,6 +112,36 @@ Scroll through every paper token sorted alphabetically, then by P/T. Switching t
 | X | Jump to first token under this letter |
 | Hold X | Cancel, go back without jumping |
 
+### Card Browser
+
+Browse and print any card in the database. Supports on-screen filtering by CMC, colour, and type.
+
+| Button | Action |
+|---|---|
+| A | Next card |
+| B | Previous card |
+| X | Print current card |
+| Hold A | Jump to random card in current filter |
+| Hold X | Enter filter menu |
+| Y | Cycle to next mode |
+| Hold Y | Help overlay |
+
+**Filter menu** — choose CMC, COLOR, or TYPE with A/B; X selects:
+
+| Button | Action |
+|---|---|
+| A / B | Cycle filter categories |
+| X | Enter sub-selector |
+| Hold X | Cancel |
+
+**Sub-selector** (CMC / COLOR / TYPE):
+
+| Button | Action |
+|---|---|
+| A / B | Cycle values |
+| X | Apply filter |
+| Hold X | Back to category |
+
 ### Life Tracker
 
 4-player life totals starting at 40. The display splits into four quadrants, one per player. The selected player is highlighted with a gold border.
@@ -128,6 +176,7 @@ Available at `http://<pi-ip>:5000` from any device on the network. The **Info** 
 - **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
 - **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
 - **System** — cycle mode, reload card database
+- **Card Browser** — always-visible panel; filter by CMC/colour/type, Random, Print
 
 ## Print format
 

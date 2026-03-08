@@ -214,6 +214,41 @@
     .mode-bar   { text-align: center; color: #888; font-size: 0.8rem; }
     .divider    { border-top: 1px solid #2a2a40; margin: 12px 0; }
     .hidden     { display: none; }
+
+    /* Card Browser */
+    .filter-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      align-items: center; margin-bottom: 12px;
+    }
+    .filter-row select, .filter-row input {
+      background: #12121e; border: 1px solid #444; border-radius: 4px;
+      color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
+      padding: 5px 8px; outline: none;
+    }
+    .filter-row select:focus, .filter-row input:focus { border-color: #d4af37; }
+    .filter-row label { color: #888; font-size: 0.75rem; }
+    .color-toggles { display: flex; gap: 4px; align-items: center; }
+    .color-btn {
+      width: 26px; height: 26px; border-radius: 50%;
+      font-size: 0.7rem; font-weight: bold; padding: 0;
+      border: 2px solid transparent; opacity: 0.35;
+      transition: opacity 0.1s, border-color 0.1s;
+    }
+    .color-btn.active { opacity: 1; border-color: #fff; }
+    .color-btn.W { background: #f5e9b0; color: #333; }
+    .color-btn.U { background: #3a7ad0; color: #fff; }
+    .color-btn.B { background: #5a3a7a; color: #fff; }
+    .color-btn.R { background: #d04040; color: #fff; }
+    .color-btn.G { background: #38a050; color: #fff; }
+    .color-btn.C { background: #888;    color: #fff; }
+    .browser-card {
+      background: #12121e; border: 1px solid #2a2a40;
+      border-radius: 6px; padding: 12px; margin-bottom: 12px; min-height: 70px;
+    }
+    .browser-card-name { font-size: 1.3rem; font-weight: bold; color: #fff; }
+    .browser-card-type { color: #888; font-size: 0.8rem; margin: 2px 0; }
+    .browser-card-info { color: #d4af37; font-size: 0.85rem; }
+    .browser-count     { color: #555; font-size: 0.75rem; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -330,6 +365,56 @@
   <div class="mode-bar">
     Modes: <span id="modes-list">{{ status.modes | join(' / ') }}</span>
   </div>
+</div>
+
+<!-- Card Browser (always visible, independent of on-screen mode) -->
+<div class="panel">
+  <div class="label">CARD BROWSER</div>
+
+  <div class="filter-row">
+    <div>
+      <label>CMC</label><br>
+      <select id="b-cmc" onchange="browserFilterChange()">
+        <option value="">Any</option>
+        {% for n in range(0, 17) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>TYPE</label><br>
+      <select id="b-type" onchange="browserFilterChange()">
+        <option value="">Any</option>
+        <option>Creature</option>
+        <option>Instant</option>
+        <option>Sorcery</option>
+        <option>Enchantment</option>
+        <option>Artifact</option>
+        <option>Planeswalker</option>
+        <option>Land</option>
+      </select>
+    </div>
+    <div>
+      <label>COLOR</label><br>
+      <div class="color-toggles">
+        {% for c in ['W','U','B','R','G','C'] %}
+          <button class="color-btn {{ c }}" data-color="{{ c }}" onclick="toggleColor('{{ c }}')">{{ c }}</button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="browser-card" id="b-card">
+    <div class="browser-card-name" id="b-name">—</div>
+    <div class="browser-card-type" id="b-type-line"></div>
+    <div class="browser-card-info" id="b-info"></div>
+    <div class="browser-count" id="b-count"></div>
+  </div>
+
+  <div class="btn-group" style="margin-bottom: 10px;">
+    <button onclick="browserRandom()">RANDOM</button>
+    <button class="print-btn" id="b-print-btn" onclick="browserPrint()" disabled>PRINT</button>
+  </div>
+
+  <div id="b-status" style="text-align:center; min-height:18px; font-size:0.85rem;"></div>
 </div>
 
 <script>
@@ -546,6 +631,100 @@
   }
 
   setInterval(fetchStatus, 2000);
+
+  // ---------------------------------------------------------------
+  // Card Browser
+  // ---------------------------------------------------------------
+  let _browserCard = null;
+  let _browserColor = null;
+  let _browserCount = 0;
+
+  function toggleColor(c) {
+    if (_browserColor === c) {
+      _browserColor = null;
+    } else {
+      _browserColor = c;
+    }
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.color === _browserColor);
+    });
+    browserFilterChange();
+  }
+
+  async function browserFilterChange() {
+    const cmc   = document.getElementById('b-cmc').value || null;
+    const type  = document.getElementById('b-type').value || null;
+    const color = _browserColor || null;
+
+    const params = new URLSearchParams();
+    if (cmc)   params.set('cmc', cmc);
+    if (type)  params.set('type', type);
+    if (color) params.set('color', color);
+
+    try {
+      const r = await fetch('/api/cards?' + params);
+      const d = await r.json();
+      _browserCount = d.total;
+      document.getElementById('b-count').textContent =
+        `${d.total} card${d.total !== 1 ? 's' : ''} match filters`;
+    } catch(e) {}
+  }
+
+  async function browserRandom() {
+    const cmc   = document.getElementById('b-cmc').value || null;
+    const type  = document.getElementById('b-type').value || null;
+    const color = _browserColor || null;
+
+    document.getElementById('b-status').textContent = '';
+    try {
+      const r = await fetch('/api/cards/random', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cmc: cmc ? parseInt(cmc) : null, color, type}),
+      });
+      if (!r.ok) {
+        document.getElementById('b-status').textContent = 'No cards match filters';
+        return;
+      }
+      _browserCard = await r.json();
+      renderBrowserCard(_browserCard);
+    } catch(e) {}
+  }
+
+  function renderBrowserCard(card) {
+    document.getElementById('b-name').textContent = card.name;
+    document.getElementById('b-type-line').textContent = card.type_line;
+    const colors = (card.colors && card.colors.length) ? card.colors.join('') : 'C';
+    const pt = (card.power != null) ? `  ${card.power}/${card.toughness}` : '';
+    document.getElementById('b-info').textContent =
+      `CMC ${card.cmc}  ${colors}${pt}`;
+    document.getElementById('b-count').textContent = `${_browserCount} card${_browserCount !== 1 ? 's' : ''} match filters`;
+    document.getElementById('b-print-btn').disabled = false;
+    document.getElementById('b-status').textContent = '';
+  }
+
+  async function browserPrint() {
+    if (!_browserCard) return;
+    document.getElementById('b-status').textContent = 'Printing...';
+    document.getElementById('b-print-btn').disabled = true;
+    try {
+      const r = await fetch('/api/cards/print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: _browserCard.id}),
+      });
+      const d = await r.json();
+      document.getElementById('b-status').textContent =
+        d.ok ? `Printed: ${_browserCard.name}` : 'Print failed';
+    } catch(e) {
+      document.getElementById('b-status').textContent = 'Error';
+    } finally {
+      document.getElementById('b-print-btn').disabled = false;
+    }
+  }
+
+  // Init filter count on load
+  browserFilterChange();
 </script>
 </body>
 </html>

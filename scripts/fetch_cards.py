@@ -106,6 +106,7 @@ def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
                 "mana_cost": mana_cost,
                 "cmc": cmc,
                 "type_line": type_line,
+                "colors": card.get("colors", []),
                 "power": card.get("power"),
                 "toughness": card.get("toughness"),
                 "oracle_text": oracle_text,

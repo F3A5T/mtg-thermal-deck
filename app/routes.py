@@ -131,7 +131,93 @@ def api_reload():
     current_app.card_manager.reload()  # type: ignore[attr-defined]
     state = current_app.app_state  # type: ignore[attr-defined]
     from app.modes.token import TokenMode
+    from app.modes.browser import CardBrowserMode
     for mode in state.modes:
         if isinstance(mode, TokenMode):
             mode.reload()
+        elif isinstance(mode, CardBrowserMode):
+            mode.on_activate()
     return jsonify({"ok": True})
+
+
+# ------------------------------------------------------------------
+# Card Browser API  (independent of the current on-screen mode)
+# ------------------------------------------------------------------
+
+@bp.route("/api/cards")
+def api_cards_list():
+    """Return lightweight card list matching optional filters.
+
+    Query params: cmc=<int>, color=W|U|B|R|G|C, type=<str>
+    Returns: { total: N, cards: [{id, name, cmc, colors, type_line, power, toughness}] }
+    """
+    cm = current_app.card_manager  # type: ignore[attr-defined]
+    cmc = request.args.get("cmc", type=int)
+    color = request.args.get("color") or None
+    type_kw = request.args.get("type") or None
+
+    cards = cm.filter_cards(cmc=cmc, color=color, type_keyword=type_kw)
+    return jsonify({
+        "total": len(cards),
+        "cards": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "cmc": c.cmc,
+                "colors": c.colors,
+                "type_line": c.type_line,
+                "power": c.power,
+                "toughness": c.toughness,
+            }
+            for c in cards
+        ],
+    })
+
+
+@bp.route("/api/cards/random", methods=["POST"])
+def api_cards_random():
+    """Pick a random card matching filters and return its full dict.
+
+    Body (JSON): { cmc: <int|null>, color: <str|null>, type: <str|null> }
+    """
+    cm = current_app.card_manager  # type: ignore[attr-defined]
+    data = request.get_json(silent=True) or {}
+    cmc = data.get("cmc")
+    if isinstance(cmc, str):
+        cmc = int(cmc) if cmc.isdigit() else None
+    color = data.get("color") or None
+    type_kw = data.get("type") or None
+
+    card = cm.random_card(cmc=cmc, color=color, type_keyword=type_kw)
+    if not card:
+        return jsonify({"error": "No cards match filters"}), 404
+    return jsonify(card.to_dict())
+
+
+@bp.route("/api/cards/print", methods=["POST"])
+def api_cards_print():
+    """Print a card by ID.
+
+    Body (JSON): { id: <str> }
+    """
+    cm = current_app.card_manager  # type: ignore[attr-defined]
+    printer = current_app.printer  # type: ignore[attr-defined]
+    data = request.get_json(silent=True) or {}
+    card_id = data.get("id", "")
+
+    card = cm.get_card_by_id(card_id)
+    if not card:
+        return jsonify({"error": "Card not found"}), 404
+
+    import threading
+
+    result = {"ok": False}
+
+    def _do():
+        result["ok"] = printer.print_card(card)
+
+    t = threading.Thread(target=_do, daemon=True)
+    t.start()
+    t.join(timeout=30)
+
+    return jsonify({"ok": result["ok"], "card": card.to_dict()})
