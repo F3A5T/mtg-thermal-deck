@@ -267,7 +267,7 @@ class TokenMode(BaseMode):
             draw.text((x + 4, 204), label, font=_FONT_SM, fill=_GOLD)
 
     def _render_letter_select(self, draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
-        draw.text((10, 8), "FILTER BY LETTER", font=_FONT_LABEL, fill=_GOLD)
+        draw.text((10, 8), "TOKEN PRINTER", font=_FONT_LABEL, fill=_GOLD)
 
         if not self._letters:
             return

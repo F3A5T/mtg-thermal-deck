@@ -107,10 +107,11 @@ class DisplayHat:
             was_pressed = self._prev_buttons[hw_btn]
 
             if pressed and not was_pressed:
-                # Rising edge — start timing, fire short press
+                # Rising edge — start timing
+                # Y fires on release so hold can be detected first; all others fire now
                 self._press_start[hw_btn] = now
                 self._last_repeat[hw_btn] = None
-                if self._callback:
+                if label != BUTTON_Y and self._callback:
                     self._callback(label)
 
             elif pressed and was_pressed:
@@ -125,7 +126,10 @@ class DisplayHat:
                             self._callback(label + ("_HOLD_FIRST" if is_first else "_HOLD"))
 
             else:
-                # Released
+                # Released — fire Y now only if it was a short press (no hold fired)
+                if label == BUTTON_Y and self._last_repeat[hw_btn] is None:
+                    if self._callback:
+                        self._callback(label)
                 self._press_start[hw_btn] = None
                 self._last_repeat[hw_btn] = None
 
