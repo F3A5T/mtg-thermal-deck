@@ -1,9 +1,3 @@
-# mtg-thermal-deck
-
-A small device to help with MTG related tasks. Starting with Momir Vig Basic.
-
----
-
 # MTG Console
 
 Momir Basic thermal card printer for Raspberry Pi Zero 2W with Pimoroni Display HAT Mini.
