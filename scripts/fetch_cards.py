@@ -3,14 +3,14 @@
 Download card data and artwork from Scryfall for Momir Basic.
 
 - Pulls Scryfall's oracle_cards bulk data
-- Filters for all unique creature cards
+- Streams and filters for creature cards (low memory usage)
 - Downloads art_crop images organised by CMC
 - Writes data/cards/index.json for the main app to load
 
 Usage:
     python scripts/fetch_cards.py
     python scripts/fetch_cards.py --max-per-cmc 5   # quick test run
-    python scripts/fetch_cards.py --dry-run          # no downloads
+    python scripts/fetch_cards.py --dry-run          # no image downloads
     python scripts/fetch_cards.py --cmc 3 4 5        # specific CMCs only
 """
 
@@ -20,11 +20,11 @@ import logging
 import os
 import random
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 import requests
+import ijson
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ DEFAULT_DATA_DIR = Path(__file__).parent.parent / "data" / "cards"
 
 
 # ---------------------------------------------------------------------------
-# Fetch bulk data
+# Fetch bulk data URL
 # ---------------------------------------------------------------------------
 
 def _get_bulk_url() -> str:
@@ -49,79 +49,68 @@ def _get_bulk_url() -> str:
     raise RuntimeError("oracle_cards bulk data not found in Scryfall API response")
 
 
-def _download_bulk(url: str) -> list:
-    logger.info("Downloading bulk card data (this may take a minute)...")
-    with requests.get(url, stream=True, timeout=180) as r:
-        r.raise_for_status()
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as f:
-            tmp = f.name
-            downloaded = 0
-            for chunk in r.iter_content(chunk_size=2 * 1024 * 1024):
-                f.write(chunk)
-                downloaded += len(chunk)
-                logger.info("  %d MB...", downloaded // 1024 // 1024)
-
-    logger.info("Parsing JSON...")
-    with open(tmp, encoding="utf-8") as f:
-        data = json.load(f)
-    os.unlink(tmp)
-    logger.info("Loaded %d cards from bulk data", len(data))
-    return data
-
-
 # ---------------------------------------------------------------------------
-# Filter
+# Stream-parse and filter in one pass (avoids loading full JSON into RAM)
 # ---------------------------------------------------------------------------
 
-def _extract_creatures(cards: list, only_cmcs: list[int] | None = None) -> dict[int, list]:
-    """Return {cmc: [card_entry, ...]} for all creature cards."""
+def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
+    """Download bulk data and stream-parse it, keeping only creature cards.
+
+    Uses ijson to iterate one card at a time so the Pi Zero's 512 MB RAM
+    is never overwhelmed by the ~300 MB JSON blob.
+    """
+    logger.info("Downloading and parsing bulk card data (stream mode)...")
     by_cmc: dict[int, list] = {}
+    total_seen = total_kept = 0
 
-    for card in cards:
-        type_line = card.get("type_line", "")
-        if "Creature" not in type_line:
-            continue
-        if card.get("digital", False):
-            continue
+    with requests.get(url, stream=True, timeout=300) as r:
+        r.raise_for_status()
+        r.raw.decode_content = True  # decompress gzip on the fly
+        for card in ijson.items(r.raw, "item"):
+            total_seen += 1
+            if total_seen % 5000 == 0:
+                logger.info("  Scanned %d cards, kept %d creatures so far...", total_seen, total_kept)
 
-        # Resolve image: normal card or first face of a DFC
-        image_uris = card.get("image_uris") or {}
-        if not image_uris.get("art_crop"):
-            faces = card.get("card_faces") or []
-            if faces:
-                image_uris = faces[0].get("image_uris") or {}
-            if not image_uris.get("art_crop"):
+            type_line = card.get("type_line") or ""
+            if "Creature" not in type_line:
+                continue
+            if card.get("digital", False):
                 continue
 
-        cmc = int(card.get("cmc", 0))
-        if only_cmcs and cmc not in only_cmcs:
-            continue
+            # Resolve art_crop: normal card or first face of a DFC
+            image_uris = card.get("image_uris") or {}
+            if not image_uris.get("art_crop"):
+                faces = card.get("card_faces") or []
+                if faces:
+                    image_uris = faces[0].get("image_uris") or {}
+                if not image_uris.get("art_crop"):
+                    continue
 
-        # Mana cost: prefer top-level, fall back to first face
-        mana_cost = card.get("mana_cost") or ""
-        if not mana_cost:
-            faces = card.get("card_faces") or []
-            mana_cost = faces[0].get("mana_cost", "") if faces else ""
+            cmc = int(card.get("cmc") or 0)
+            if only_cmcs and cmc not in only_cmcs:
+                continue
 
-        entry = {
-            "id": card.get("id", ""),
-            "name": card.get("name", ""),
-            "mana_cost": mana_cost,
-            "cmc": cmc,
-            "type_line": type_line,
-            "power": card.get("power"),
-            "toughness": card.get("toughness"),
-            "image_url": image_uris["art_crop"],
-            "image_path": None,
-        }
-        by_cmc.setdefault(cmc, []).append(entry)
+            mana_cost = card.get("mana_cost") or ""
+            if not mana_cost:
+                faces = card.get("card_faces") or []
+                mana_cost = faces[0].get("mana_cost", "") if faces else ""
+
+            entry = {
+                "id": card.get("id", ""),
+                "name": card.get("name", ""),
+                "mana_cost": mana_cost,
+                "cmc": cmc,
+                "type_line": type_line,
+                "power": card.get("power"),
+                "toughness": card.get("toughness"),
+                "image_url": image_uris["art_crop"],
+                "image_path": None,
+            }
+            by_cmc.setdefault(cmc, []).append(entry)
+            total_kept += 1
 
     total = sum(len(v) for v in by_cmc.values())
-    logger.info(
-        "Found %d unique creatures across CMC %s",
-        total,
-        sorted(by_cmc.keys()),
-    )
+    logger.info("Found %d creatures across CMC %s", total, sorted(by_cmc.keys()))
     return by_cmc
 
 
@@ -130,11 +119,11 @@ def _extract_creatures(cards: list, only_cmcs: list[int] | None = None) -> dict[
 # ---------------------------------------------------------------------------
 
 def _download_images(
-    by_cmc: dict[int, list],
+    by_cmc: dict,
     data_dir: Path,
     max_per_cmc: int | None,
     dry_run: bool,
-) -> dict[int, list]:
+) -> dict:
     data_dir.mkdir(parents=True, exist_ok=True)
     dl = skipped = failed = 0
 
@@ -157,7 +146,6 @@ def _download_images(
                 continue
 
             if dry_run:
-                logger.debug("  [DRY RUN] %s", card["name"])
                 continue
 
             try:
@@ -172,7 +160,6 @@ def _download_images(
 
             time.sleep(REQUEST_DELAY)
 
-        # Replace the full list with our (possibly sampled) pool
         by_cmc[cmc] = pool
 
     logger.info("Images: %d downloaded, %d already existed, %d failed", dl, skipped, failed)
@@ -183,7 +170,7 @@ def _download_images(
 # Save index
 # ---------------------------------------------------------------------------
 
-def _save_index(by_cmc: dict[int, list], data_dir: Path):
+def _save_index(by_cmc: dict, data_dir: Path):
     index: dict[str, list] = {}
     for cmc, cards in by_cmc.items():
         valid = [
@@ -219,8 +206,7 @@ def main():
 
     try:
         url = _get_bulk_url()
-        all_cards = _download_bulk(url)
-        by_cmc = _extract_creatures(all_cards, only_cmcs=args.cmc)
+        by_cmc = _stream_creatures(url, only_cmcs=args.cmc)
         by_cmc = _download_images(by_cmc, args.data_dir, args.max_per_cmc, args.dry_run)
         if not args.dry_run:
             _save_index(by_cmc, args.data_dir)

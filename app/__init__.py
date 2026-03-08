@@ -1,6 +1,4 @@
 import logging
-import threading
-import time
 
 from flask import Flask
 
@@ -74,16 +72,8 @@ def create_app(config=None) -> Flask:
             state.current_mode.handle_button(button)
 
     display.set_button_callback(_on_button)
-    display.start()
-
-    def _display_loop():
-        while True:
-            img, draw = display.blank_canvas()
-            state.current_mode.render(draw, display.WIDTH, display.HEIGHT)
-            display.update(img)
-            time.sleep(0.05)  # ~20 fps
-
-    threading.Thread(target=_display_loop, daemon=True, name="display-render").start()
+    # Display loop is run by the caller (run.py) on the main thread.
+    # ST7789 SPI requires display() to be called from the thread that opened the device.
 
     logger.info(
         "MTG Console started — mode: %s | printer mock=%s | display mock=%s",

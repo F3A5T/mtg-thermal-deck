@@ -7,11 +7,13 @@ Falls back to a no-op mock when the library isn't available (dev machines).
 Button layout on the HAT:
   A — top-left      B — bottom-left
   X — top-right     Y — bottom-right
+
+Threading note: displayhatmini is NOT thread-safe. All display operations
+(rendering and button reads) must happen on the same thread. Use poll_buttons()
+and update() from the same loop — see app/__init__.py.
 """
 
 import logging
-import threading
-import time
 from typing import Callable, Optional
 
 from PIL import Image, ImageDraw
@@ -25,7 +27,6 @@ BUTTON_Y = "Y"
 
 
 class DisplayHat:
-    # Physical display resolution
     WIDTH = 320
     HEIGHT = 240
 
@@ -33,10 +34,8 @@ class DisplayHat:
         self.mock = mock
         self.brightness = brightness
         self._display = None
-        self._buffer = Image.new("RGB", (self.WIDTH, self.HEIGHT))
         self._callback: Optional[Callable[[str], None]] = None
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._prev_buttons: dict = {}
 
         if not mock:
             self._init_hardware()
@@ -49,11 +48,27 @@ class DisplayHat:
         try:
             from displayhatmini import DisplayHATMini
 
-            self._buffer = Image.new("RGB", (DisplayHATMini.WIDTH, DisplayHATMini.HEIGHT))
-            self._display = DisplayHATMini(self._buffer)
-            self._display.set_backlight(self.brightness)
             self.WIDTH = DisplayHATMini.WIDTH
             self.HEIGHT = DisplayHATMini.HEIGHT
+
+            # Single persistent buffer — draw into this every frame, never replace it.
+            # The DisplayHATMini display() method reads from whatever image it was
+            # initialised with; reassigning display.image doesn't work reliably.
+            self._buf = Image.new("RGB", (self.WIDTH, self.HEIGHT))
+            self._display = DisplayHATMini(self._buf)
+            # set_backlight in non-PWM mode calls st7789.set_backlight(int(value))
+            # so anything < 1.0 becomes 0 (off). Always pass 1 to keep it on.
+            self._display.set_backlight(1)
+
+            # Build button map for polling
+            self._hw_buttons = {
+                DisplayHATMini.BUTTON_A: BUTTON_A,
+                DisplayHATMini.BUTTON_B: BUTTON_B,
+                DisplayHATMini.BUTTON_X: BUTTON_X,
+                DisplayHATMini.BUTTON_Y: BUTTON_Y,
+            }
+            self._prev_buttons = {btn: False for btn in self._hw_buttons}
+
             logger.info("Display HAT Mini initialised (%dx%d)", self.WIDTH, self.HEIGHT)
         except ImportError:
             logger.warning("displayhatmini library not found — using mock display")
@@ -63,63 +78,45 @@ class DisplayHat:
             self.mock = True
 
     # ------------------------------------------------------------------
-    # Public API
+    # Public API — call both from the SAME thread
     # ------------------------------------------------------------------
 
     def set_button_callback(self, callback: Callable[[str], None]):
-        """Register a callback invoked with the button label ('A','B','X','Y')."""
         self._callback = callback
 
-    def start(self):
-        """Start the background button-polling thread."""
-        self._running = True
-        self._thread = threading.Thread(target=self._button_loop, daemon=True, name="display-buttons")
-        self._thread.start()
-
-    def stop(self):
-        self._running = False
+    def poll_buttons(self):
+        """Read buttons and fire callback for any newly pressed ones.
+        Must be called from the same thread as update().
+        """
+        if self.mock or not self._display:
+            return
+        for hw_btn, label in self._hw_buttons.items():
+            pressed = self._display.read_button(hw_btn)
+            if pressed and not self._prev_buttons[hw_btn]:
+                if self._callback:
+                    self._callback(label)
+            self._prev_buttons[hw_btn] = pressed
 
     def update(self, image: Image.Image):
-        """Push a PIL Image to the display."""
-        self._buffer.paste(image)
+        """Paste rendered frame into the persistent buffer and push to display."""
         if not self.mock and self._display:
             try:
+                self._buf.paste(image)
                 self._display.display()
             except Exception as exc:
                 logger.error("Display update error: %s", exc)
 
     def blank_canvas(self) -> tuple[Image.Image, ImageDraw.ImageDraw]:
-        """Return a fresh (image, draw) pair sized to the display."""
+        """Return a fresh off-screen image to draw into this frame."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), (18, 18, 28))
         return img, ImageDraw.Draw(img)
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
-
-    def _button_loop(self):
-        if self.mock:
-            return
-
-        try:
-            from displayhatmini import DisplayHATMini
-
-            hw_buttons = {
-                DisplayHATMini.BUTTON_A: BUTTON_A,
-                DisplayHATMini.BUTTON_B: BUTTON_B,
-                DisplayHATMini.BUTTON_X: BUTTON_X,
-                DisplayHATMini.BUTTON_Y: BUTTON_Y,
-            }
-            prev: dict[object, bool] = {btn: False for btn in hw_buttons}
-
-            while self._running:
-                for hw_btn, label in hw_buttons.items():
-                    pressed = self._display.read_button(hw_btn)
-                    if pressed and not prev[hw_btn]:
-                        if self._callback:
-                            self._callback(label)
-                    prev[hw_btn] = pressed
-                time.sleep(0.05)  # 20 Hz poll
-
-        except Exception as exc:
-            logger.error("Button loop crashed: %s", exc, exc_info=True)
+    def shutdown(self):
+        """Turn off backlight and clear the screen on exit."""
+        if not self.mock and self._display:
+            try:
+                self._buf.paste((0, 0, 0), [0, 0, self.WIDTH, self.HEIGHT])
+                self._display.display()
+                self._display.set_backlight(0)
+            except Exception:
+                pass

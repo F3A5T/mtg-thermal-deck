@@ -2,6 +2,7 @@ flask>=3.0.0
 python-escpos>=3.1
 Pillow>=10.0.0
 requests>=2.31.0
+ijson>=3.2.3
 
 # Raspberry Pi / hardware — comment out for local dev
 displayhatmini>=0.0.2
