@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Data — images are large, only commit the index if desired
+data/cards/*/
+# Uncomment to also ignore the index:
+# data/cards/index.json
+
+# Environment
+.env
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store

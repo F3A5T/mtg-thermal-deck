@@ -1,0 +1,18 @@
+[Unit]
+Description=MTG Console
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/mtg-console
+ExecStart=/home/pi/mtg-console/.venv/bin/python run.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+# Uncomment to run with mock hardware during testing:
+# Environment=MOCK_PRINTER=true
+# Environment=MOCK_DISPLAY=true
+
+[Install]
+WantedBy=multi-user.target

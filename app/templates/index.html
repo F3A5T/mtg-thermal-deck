@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTG Console</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #12121e;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 12px;
+    }
+
+    h1 { color: #d4af37; margin-bottom: 18px; font-size: 1.7rem; letter-spacing: 2px; }
+
+    .panel {
+      background: #1a1a2e;
+      border: 1px solid #d4af37;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 14px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .label {
+      color: #d4af37;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .cmc-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: 8px 0 12px;
+    }
+
+    .cmc-value {
+      font-size: 5rem;
+      font-weight: bold;
+      color: #fff;
+      min-width: 100px;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .card-count {
+      text-align: center;
+      color: #888;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .card-count.has-cards { color: #50c87a; }
+    .card-count.no-cards  { color: #e05050; }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #d4af37;
+      color: #12121e;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: bold;
+      font-family: inherit;
+      transition: background 0.1s;
+    }
+    button:hover  { background: #e6c84a; }
+    button:active { background: #b89a28; }
+
+    button.secondary {
+      background: #2a2a40;
+      color: #ccc;
+      border: 1px solid #444;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+    button.secondary:hover { background: #383858; }
+
+    button.print-btn {
+      background: #c0392b;
+      color: #fff;
+      padding: 12px 32px;
+      font-size: 1.05rem;
+    }
+    button.print-btn:hover { background: #e04030; }
+
+    #status-msg {
+      text-align: center;
+      min-height: 20px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+
+    #last-card {
+      text-align: center;
+      color: #666;
+      font-size: 0.85rem;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    .quick-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .mode-bar {
+      text-align: center;
+      color: #888;
+      font-size: 0.8rem;
+    }
+
+    .divider { border-top: 1px solid #2a2a40; margin: 12px 0; }
+  </style>
+</head>
+<body>
+
+<h1>MTG CONSOLE</h1>
+
+<!-- Main control panel -->
+<div class="panel">
+  <div class="label">MODE: <span id="mode-name">{{ status.current_mode }}</span></div>
+
+  <div class="cmc-row">
+    <button onclick="cmc('down')" title="B">&#9660;</button>
+    <div class="cmc-value" id="cmc-val">{{ status.status.cmc }}</div>
+    <button onclick="cmc('up')" title="A">&#9650;</button>
+  </div>
+
+  <div class="card-count {% if status.status.card_count > 0 %}has-cards{% else %}no-cards{% endif %}"
+       id="card-count">
+    {{ status.status.card_count }} card{{ 's' if status.status.card_count != 1 else '' }} available
+  </div>
+
+  <div class="btn-group">
+    <button class="print-btn" onclick="printCard()">PRINT</button>
+  </div>
+
+  <div id="status-msg">{{ status.status.status_message or '' }}</div>
+  <div id="last-card">
+    {% if status.status.last_card %}Last: {{ status.status.last_card.name }}{% endif %}
+  </div>
+</div>
+
+<!-- Quick CMC selector -->
+<div class="panel">
+  <div class="label">QUICK SELECT CMC</div>
+  <div class="quick-grid">
+    {% for n in range(0, 17) %}
+      <button class="secondary" onclick="setCmc({{ n }})">{{ n }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Mode / system controls -->
+<div class="panel">
+  <div class="label">SYSTEM</div>
+  <div class="btn-group">
+    <button class="secondary" onclick="cycleMode()">Next Mode (Y)</button>
+    <button class="secondary" onclick="reloadCards()">Reload Cards</button>
+  </div>
+  <div class="divider"></div>
+  <div class="mode-bar">
+    Modes: <span id="modes-list">{{ status.modes | join(' / ') }}</span>
+  </div>
+</div>
+
+<script>
+  async function fetchStatus() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      document.getElementById('mode-name').textContent = d.current_mode;
+      document.getElementById('modes-list').textContent = d.modes.join(' / ');
+
+      const s = d.status;
+      document.getElementById('cmc-val').textContent = s.cmc ?? '';
+
+      const countEl = document.getElementById('card-count');
+      const c = s.card_count ?? 0;
+      countEl.textContent = `${c} card${c !== 1 ? 's' : ''} available`;
+      countEl.className = 'card-count ' + (c > 0 ? 'has-cards' : 'no-cards');
+
+      document.getElementById('status-msg').textContent = s.status_message || '';
+      document.getElementById('last-card').textContent =
+        s.last_card ? `Last: ${s.last_card.name}` : '';
+    } catch(e) { /* ignore transient fetch errors */ }
+  }
+
+  async function cmc(action) {
+    await fetch('/api/cmc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action}),
+    });
+    fetchStatus();
+  }
+
+  async function setCmc(value) {
+    await fetch('/api/cmc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({value}),
+    });
+    fetchStatus();
+  }
+
+  async function printCard() {
+    document.getElementById('status-msg').textContent = 'Printing...';
+    await fetch('/api/print', {method: 'POST'});
+    setTimeout(fetchStatus, 1500);
+  }
+
+  async function cycleMode() {
+    await fetch('/api/mode', {method: 'POST'});
+    fetchStatus();
+  }
+
+  async function reloadCards() {
+    await fetch('/api/reload', {method: 'POST'});
+    fetchStatus();
+  }
+
+  // Poll for updates (handles print completion, display sync)
+  setInterval(fetchStatus, 2000);
+</script>
+</body>
+</html>
