@@ -90,6 +90,15 @@ class CardManager:
             cards = [c for c in cards if kw in c.type_line.lower()]
         return cards
 
+    def get_card_by_name(self, name: str) -> Optional[Card]:
+        """Return the first local card whose name matches (case-insensitive)."""
+        name_lower = name.lower()
+        for cards in self._index.values():
+            for c in cards:
+                if c.name.lower() == name_lower:
+                    return c
+        return None
+
     def get_card_by_id(self, card_id: str) -> Optional[Card]:
         for cards in self._index.values():
             for c in cards:

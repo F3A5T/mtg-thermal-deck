@@ -142,6 +142,19 @@ Browse and print any card in the database. Supports on-screen filtering by CMC, 
 | X | Apply filter |
 | Hold X | Back to category |
 
+### Decklist
+
+Load a deck from Moxfield or Archidekt via the web UI, then browse and print cards on-screen. Cards are matched by name against the local database; unrecognised cards are shown but cannot be printed. Load the deck via the web panel — URL entry on hardware is not supported.
+
+| Button | Action |
+|---|---|
+| A | Next card in deck |
+| B | Previous card in deck |
+| X | Print current card (all copies) |
+| Hold X | Arm print-all (press X again to confirm) |
+| Y | Cycle to next mode |
+| Hold Y | Help overlay |
+
 ### Life Tracker
 
 4-player life totals starting at 40. The display splits into four quadrants, one per player. The selected player is highlighted with a gold border.
@@ -177,6 +190,7 @@ Available at `http://<pi-ip>:5000` from any device on the network. The **Info** 
 - **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
 - **System** — cycle mode, reload card database
 - **Card Browser** — always-visible panel; filter by CMC/colour/type, Random, Print
+- **Decklist** — paste a Moxfield/Archidekt URL; view matched cards, Print individual or Print All
 
 ## Print format
 

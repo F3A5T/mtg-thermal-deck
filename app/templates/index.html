@@ -249,6 +249,24 @@
     .browser-card-type { color: #888; font-size: 0.8rem; margin: 2px 0; }
     .browser-card-info { color: #d4af37; font-size: 0.85rem; }
     .browser-count     { color: #555; font-size: 0.75rem; margin-top: 6px; }
+
+    /* Decklist */
+    .deck-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 10px; border-bottom: 1px solid #1a1a2e; font-size: 0.82rem;
+    }
+    .deck-row:last-child { border-bottom: none; }
+    .deck-row.not-found { opacity: 0.4; }
+    .deck-row.commander { background: #1a1508; }
+    .deck-row-left { display: flex; align-items: center; gap: 8px; }
+    .deck-qty  { color: #d4af37; min-width: 24px; font-weight: bold; }
+    .deck-name { color: #e0e0e0; }
+    .deck-cat  { color: #555; font-size: 0.7rem; margin-left: 4px; }
+    .deck-found-badge { font-size: 0.7rem; color: #50c87a; }
+    .deck-miss-badge  { font-size: 0.7rem; color: #e05050; }
+    .deck-print-btn { padding: 3px 8px; font-size: 0.75rem; background: #c0392b; color: #fff; }
+    .deck-print-btn:hover { background: #e04030; }
+    .deck-print-btn:disabled { opacity: 0.4; cursor: default; }
   </style>
 </head>
 <body>
@@ -415,6 +433,29 @@
   </div>
 
   <div id="b-status" style="text-align:center; min-height:18px; font-size:0.85rem;"></div>
+</div>
+
+<!-- Decklist -->
+<div class="panel">
+  <div class="label">DECKLIST</div>
+
+  <div class="search-row" style="margin-bottom: 10px;">
+    <input type="url" id="deck-url" placeholder="Moxfield or Archidekt URL…" style="flex:1;">
+    <button onclick="deckLoad()" id="deck-load-btn">LOAD</button>
+  </div>
+  <div id="deck-status" style="text-align:center; min-height:18px; font-size:0.85rem; margin-bottom:8px;"></div>
+
+  <div id="deck-info" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span id="deck-name" style="font-weight:bold; color:#d4af37;"></span>
+      <span id="deck-summary" style="color:#555; font-size:0.75rem;"></span>
+    </div>
+    <div class="btn-group" style="margin-bottom: 10px;">
+      <button class="print-btn" onclick="deckPrintAll()">PRINT ALL</button>
+      <div id="deck-print-progress" class="hidden" style="color:#888; font-size:0.8rem; margin-top:6px;"></div>
+    </div>
+    <div id="deck-card-list" style="max-height:320px; overflow-y:auto; border:1px solid #2a2a40; border-radius:4px;"></div>
+  </div>
 </div>
 
 <script>
@@ -725,6 +766,143 @@
 
   // Init filter count on load
   browserFilterChange();
+
+  // ---------------------------------------------------------------
+  // Decklist
+  // ---------------------------------------------------------------
+  let _deckCards = [];
+  let _deckPrinting = false;
+
+  async function deckLoad() {
+    const url = document.getElementById('deck-url').value.trim();
+    if (!url) return;
+    const btn = document.getElementById('deck-load-btn');
+    btn.disabled = true;
+    document.getElementById('deck-status').textContent = 'Loading…';
+    document.getElementById('deck-info').classList.add('hidden');
+
+    try {
+      const r = await fetch('/api/deck/load', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url}),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        document.getElementById('deck-status').textContent = d.error || 'Error loading deck';
+        return;
+      }
+      renderDeck(d);
+      document.getElementById('deck-status').textContent = '';
+    } catch(e) {
+      document.getElementById('deck-status').textContent = 'Network error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderDeck(d) {
+    _deckCards = d.cards || [];
+    document.getElementById('deck-name').textContent = d.deck_name || 'Deck';
+    document.getElementById('deck-summary').textContent =
+      `${d.found}/${d.total} found`;
+    document.getElementById('deck-info').classList.remove('hidden');
+
+    const list = document.getElementById('deck-card-list');
+    list.innerHTML = '';
+
+    // Group: commanders first, then mainboard, then others
+    const order = ['commander', 'commanders', 'main', 'mainboard', 'sideboard'];
+    const grouped = {};
+    for (const dc of _deckCards) {
+      (grouped[dc.category] = grouped[dc.category] || []).push(dc);
+    }
+
+    let lastCat = null;
+    for (const cat of [...order, ...Object.keys(grouped).filter(c => !order.includes(c))]) {
+      const cards = grouped[cat];
+      if (!cards) continue;
+
+      // Category header
+      const header = document.createElement('div');
+      header.style = 'padding:4px 10px; font-size:0.7rem; color:#d4af37; background:#12121e; text-transform:uppercase; letter-spacing:1px;';
+      header.textContent = cat;
+      list.appendChild(header);
+
+      for (const dc of cards) {
+        const row = document.createElement('div');
+        row.className = 'deck-row' +
+          (!dc.found ? ' not-found' : '') +
+          (cat === 'commander' || cat === 'commanders' ? ' commander' : '');
+
+        const badge = dc.found
+          ? `<span class="deck-found-badge">✓</span>`
+          : `<span class="deck-miss-badge">✗</span>`;
+
+        row.innerHTML = `
+          <div class="deck-row-left">
+            <span class="deck-qty">${dc.quantity}x</span>
+            <span class="deck-name">${dc.name}</span>
+            ${badge}
+          </div>
+          <button class="deck-print-btn" ${!dc.found ? 'disabled' : ''}
+            onclick="deckPrintCard('${dc.name.replace(/'/g,"\\'")}', this)">
+            PRINT
+          </button>`;
+        list.appendChild(row);
+      }
+    }
+  }
+
+  async function deckPrintCard(name, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const r = await fetch('/api/deck/print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name}),
+      });
+      const d = await r.json();
+      btn.textContent = d.ok ? '✓' : '✗';
+      setTimeout(() => { btn.textContent = 'PRINT'; btn.disabled = false; }, 3000);
+    } catch(e) {
+      btn.textContent = '✗';
+      setTimeout(() => { btn.textContent = 'PRINT'; btn.disabled = false; }, 2000);
+    }
+  }
+
+  async function deckPrintAll() {
+    if (_deckPrinting) return;
+    const r = await fetch('/api/deck/print-all', {method: 'POST'});
+    const d = await r.json();
+    if (!r.ok) {
+      document.getElementById('deck-status').textContent = d.error || 'Error';
+      return;
+    }
+    _deckPrinting = true;
+    document.getElementById('deck-print-progress').classList.remove('hidden');
+    _pollDeckProgress();
+  }
+
+  async function _pollDeckProgress() {
+    if (!_deckPrinting) return;
+    try {
+      const r = await fetch('/api/deck/status');
+      const d = await r.json();
+      const prog = document.getElementById('deck-print-progress');
+      if (d.printing) {
+        prog.textContent = `Printing… ${d.print_progress}/${d.print_total}`;
+        setTimeout(_pollDeckProgress, 2000);
+      } else {
+        prog.textContent = d.last_printed || 'Done';
+        _deckPrinting = false;
+        setTimeout(() => prog.classList.add('hidden'), 5000);
+      }
+    } catch(e) {
+      setTimeout(_pollDeckProgress, 3000);
+    }
+  }
 </script>
 </body>
 </html>

@@ -24,6 +24,7 @@ def create_app(config=None) -> Flask:
     from app.modes.momir import MomirMode
     from app.modes.token import TokenMode
     from app.modes.browser import CardBrowserMode
+    from app.modes.decklist import DecklistMode
     from app.modes.info import InfoMode
     from app.modes.life import LifeMode
     from app.state import AppState
@@ -52,6 +53,7 @@ def create_app(config=None) -> Flask:
         MomirMode(card_manager, printer),
         TokenMode(tokens_path, printer),
         CardBrowserMode(card_manager, printer),
+        DecklistMode(card_manager, printer, tokens_path),
         LifeMode(),
         InfoMode(),
     ]

@@ -132,12 +132,117 @@ def api_reload():
     state = current_app.app_state  # type: ignore[attr-defined]
     from app.modes.token import TokenMode
     from app.modes.browser import CardBrowserMode
+    from app.modes.decklist import DecklistMode
     for mode in state.modes:
         if isinstance(mode, TokenMode):
             mode.reload()
         elif isinstance(mode, CardBrowserMode):
             mode.on_activate()
+        elif isinstance(mode, DecklistMode):
+            mode.reload_tokens()
     return jsonify({"ok": True})
+
+
+# ------------------------------------------------------------------
+# Decklist API
+# ------------------------------------------------------------------
+
+def _get_decklist_mode():
+    from app.modes.decklist import DecklistMode
+    state = current_app.app_state  # type: ignore[attr-defined]
+    return next((m for m in state.modes if isinstance(m, DecklistMode)), None)
+
+
+@bp.route("/api/deck/load", methods=["POST"])
+def api_deck_load():
+    """Fetch a deck from Moxfield or Archidekt and resolve against local DB.
+
+    Body (JSON): { "url": "https://www.moxfield.com/decks/..." }
+    Returns full deck status.
+    """
+    from app.decklist import load_deck_from_url
+
+    data = request.get_json(silent=True) or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+
+    mode = _get_decklist_mode()
+    if not mode:
+        return jsonify({"error": "DecklistMode not registered"}), 500
+
+    try:
+        deck_name, cards = load_deck_from_url(url)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"Failed to fetch deck: {exc}"}), 502
+
+    status = mode.load_deck(deck_name, cards)
+    return jsonify(status)
+
+
+@bp.route("/api/deck/status")
+def api_deck_status():
+    """Return current deck state."""
+    mode = _get_decklist_mode()
+    if not mode:
+        return jsonify({"error": "DecklistMode not registered"}), 500
+    return jsonify(mode.get_status())
+
+
+@bp.route("/api/deck/print", methods=["POST"])
+def api_deck_print():
+    """Print a single card from the deck by name (all copies).
+
+    Body (JSON): { "name": "Lightning Bolt" }
+    """
+    from app.decklist import PRINT_CATEGORIES
+
+    mode = _get_decklist_mode()
+    if not mode:
+        return jsonify({"error": "DecklistMode not registered"}), 500
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+
+    # Find the DeckCard by name
+    dc = next((c for c in mode._all_cards if c.name.lower() == name.lower()), None)
+    if not dc or not dc.found:
+        return jsonify({"error": f"'{name}' not found in local DB"}), 404
+
+    import threading
+    result = {"ok": False}
+
+    def _do():
+        for _ in range(dc.quantity):
+            result["ok"] = mode.printer.print_card(dc.card)
+        mode.last_printed = f"Printed: {dc.quantity}x {dc.name}"
+
+    t = threading.Thread(target=_do, daemon=True)
+    t.start()
+    t.join(timeout=60)
+
+    return jsonify({"ok": result["ok"], "name": dc.name, "quantity": dc.quantity})
+
+
+@bp.route("/api/deck/print-all", methods=["POST"])
+def api_deck_print_all():
+    """Start background print of the full mainboard + commanders.
+
+    Returns immediately; poll /api/deck/status for progress.
+    """
+    mode = _get_decklist_mode()
+    if not mode:
+        return jsonify({"error": "DecklistMode not registered"}), 500
+    if mode._printing:
+        return jsonify({"error": "Already printing"}), 409
+
+    mode.handle_button("X_HOLD_FIRST")  # arms confirm
+    mode.handle_button("X")             # confirms + starts
+    return jsonify({"ok": True, "print_total": mode._print_total})
 
 
 # ------------------------------------------------------------------
