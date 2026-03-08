@@ -1,6 +1,6 @@
 # MTG Console
 
-Momir Basic thermal card printer for Raspberry Pi Zero 2W with Pimoroni Display HAT Mini.
+Thermal card printer for Magic: The Gathering, running on a Raspberry Pi Zero 2W with a Pimoroni Display HAT Mini. Navigate modes with physical buttons, print cards on an ESC/POS thermal printer, and control everything from a web UI on your phone or browser.
 
 ## Hardware
 
@@ -20,42 +20,49 @@ Momir Basic thermal card printer for Raspberry Pi Zero 2W with Pimoroni Display 
 ## Setup
 
 ```bash
-git clone <this-repo> ~/mtg-console
-cd ~/mtg-console
+# Copy the repo to the Pi (no git required on the Pi)
+rsync -av --exclude='.git' --exclude='data/' mtg-console/ pi:/home/dev/mtg-console/
+
+# On the Pi — first-time setup (enables SPI/UART, installs venv, installs systemd service)
 bash scripts/setup.sh
+
 sudo reboot
 ```
 
-After reboot, fetch card data (downloads ~10 GB of images — takes a while):
+After reboot the service starts automatically. Fetch card data before first use:
 
 ```bash
 cd ~/mtg-console
 source .venv/bin/activate
+
+# Full card + token database (downloads artwork — takes a while on Pi Zero)
 python scripts/fetch_cards.py
+
+# Tokens only (much faster)
+python scripts/fetch_cards.py --tokens-only
+
+# Quick test — 3 cards per CMC, no tokens
+python scripts/fetch_cards.py --max-per-cmc 3 --no-tokens
 ```
 
-For a quick test with just a handful of cards:
+## Service management
+
+The app runs as a systemd service and starts on every boot.
 
 ```bash
-python scripts/fetch_cards.py --max-per-cmc 3
+sudo systemctl status mtg-console    # check status
+sudo journalctl -u mtg-console -f    # live logs
+sudo systemctl restart mtg-console   # restart (e.g. after updating files)
+sudo systemctl stop mtg-console      # stop
 ```
 
-Start the app:
+## Modes
 
-```bash
-python run.py
-```
+Press **Y** to cycle through modes. The current mode name is shown at the top of every screen.
 
-Or install the systemd service so it starts on boot:
+### Momir Basic
 
-```bash
-sudo cp scripts/mtg-console.service /etc/systemd/system/
-sudo systemctl enable --now mtg-console
-```
-
-## Using the console
-
-The **Display HAT Mini** shows the current mode UI. In **Momir Basic** mode:
+Pick a CMC and print a random creature at that cost.
 
 | Button | Action |
 |---|---|
@@ -64,7 +71,42 @@ The **Display HAT Mini** shows the current mode UI. In **Momir Basic** mode:
 | X | Print a random creature at the current CMC |
 | Y | Cycle to next mode |
 
-The **web UI** is also available at `http://<pi-ip>:5000` from any device on the network. It mirrors all button functions and lets you jump directly to a CMC.
+### Token Printer
+
+Scroll through every paper token sorted alphabetically, then by P/T.
+
+| Button | Action |
+|---|---|
+| A | Next token |
+| B | Previous token |
+| X | Print selected token |
+| Hold X (0.8s) | Enter letter-filter mode |
+| Y | Cycle to next mode |
+
+**Letter-filter mode** — jump straight to a letter of the alphabet:
+
+| Button | Action |
+|---|---|
+| A | Next letter |
+| B | Previous letter |
+| X | Jump to first token under this letter |
+| Hold X | Cancel, go back without jumping |
+
+### Info
+
+Shows the Pi's IP address, hostname, and uptime. Useful for finding the web UI address after a fresh boot.
+
+| Button | Action |
+|---|---|
+| Y | Cycle to next mode |
+
+## Web UI
+
+Available at `http://<pi-ip>:5000` from any device on the network. The **Info** screen on the display shows the IP address.
+
+- **Momir Basic** — CMC spinner, quick-select buttons 0–16, Print
+- **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
+- **System** — cycle mode, reload card database
 
 ## Print format
 
@@ -76,8 +118,6 @@ Each printed card has:
 5. **Power / Toughness** — centred, bold
 
 ## Development without hardware
-
-Set environment variables to run mock hardware on any machine:
 
 ```bash
 MOCK_PRINTER=true MOCK_DISPLAY=true python run.py
@@ -101,13 +141,11 @@ All settings in [config.py](config.py) can be overridden with environment variab
 | `MOCK_PRINTER` | `false` | Dry-run printer |
 | `MOCK_DISPLAY` | `false` | Skip Display HAT init |
 
-## Adding future modes
+## Adding a new mode
 
 1. Create `app/modes/your_mode.py` subclassing `BaseMode`
 2. Implement `name`, `render()`, `handle_button()`, and `get_status()`
 3. Register an instance in the `modes = [...]` list in `app/__init__.py`
 
 Planned future modes:
-- **Token mode** — print specific token cards by name
 - **Decklist mode** — import a Moxfield deck URL and print cards from it
-
