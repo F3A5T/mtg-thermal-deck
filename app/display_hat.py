@@ -69,8 +69,8 @@ class DisplayHat:
                 DisplayHATMini.BUTTON_Y: BUTTON_Y,
             }
             self._prev_buttons = {btn: False for btn in self._hw_buttons}
-            self._press_start: dict = {btn: None for btn in self._hw_buttons}
-            self._long_fired: dict = {btn: False for btn in self._hw_buttons}
+            self._press_start: dict  = {btn: None for btn in self._hw_buttons}
+            self._last_repeat: dict  = {btn: None for btn in self._hw_buttons}
 
             logger.info("Display HAT Mini initialised (%dx%d)", self.WIDTH, self.HEIGHT)
         except ImportError:
@@ -87,14 +87,16 @@ class DisplayHat:
     def set_button_callback(self, callback: Callable[[str], None]):
         self._callback = callback
 
-    LONG_PRESS_S = 0.8  # seconds before a hold event fires
+    LONG_PRESS_S   = 0.8   # seconds before first hold event fires
+    REPEAT_S       = 0.25  # seconds between repeated hold events while held
 
     def poll_buttons(self):
         """Read buttons and fire callback for any newly pressed ones.
 
         Fires label (e.g. "X") on rising edge (short press).
-        Fires label + "_HOLD" (e.g. "X_HOLD") once after LONG_PRESS_S of
-        continuous holding — suppresses the short-press event for that press.
+        After LONG_PRESS_S of continuous holding, fires label + "_HOLD"
+        (e.g. "X_HOLD") and then repeats every REPEAT_S for as long as
+        the button stays held — useful for fast life-total scrolling.
         Must be called from the same thread as update().
         """
         if self.mock or not self._display:
@@ -105,25 +107,26 @@ class DisplayHat:
             was_pressed = self._prev_buttons[hw_btn]
 
             if pressed and not was_pressed:
-                # Rising edge — start timing, tentatively fire short press
+                # Rising edge — start timing, fire short press
                 self._press_start[hw_btn] = now
-                self._long_fired[hw_btn] = False
+                self._last_repeat[hw_btn] = None
                 if self._callback:
                     self._callback(label)
 
             elif pressed and was_pressed:
-                # Held — fire long press once if threshold reached
+                # Held — fire _HOLD once threshold is reached, then repeat
                 start = self._press_start.get(hw_btn)
-                if start and not self._long_fired[hw_btn]:
-                    if now - start >= self.LONG_PRESS_S:
-                        self._long_fired[hw_btn] = True
+                if start and now - start >= self.LONG_PRESS_S:
+                    last = self._last_repeat[hw_btn]
+                    if last is None or now - last >= self.REPEAT_S:
+                        self._last_repeat[hw_btn] = now
                         if self._callback:
                             self._callback(label + "_HOLD")
 
             else:
                 # Released
                 self._press_start[hw_btn] = None
-                self._long_fired[hw_btn] = False
+                self._last_repeat[hw_btn] = None
 
             self._prev_buttons[hw_btn] = pressed
 
