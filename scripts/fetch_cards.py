@@ -144,7 +144,10 @@ def _download_images(
 
         logger.info("CMC %d — %d cards", cmc, len(pool))
 
-        for card in pool:
+        for j, card in enumerate(pool):
+            if j > 0 and j % 200 == 0:
+                logger.info("  CMC %d: %d/%d...", cmc, j, len(pool))
+
             dest = cmc_dir / f"{card['id']}.jpg"
             card["image_path"] = str(dest)
 
@@ -276,7 +279,11 @@ def _fetch_tokens(data_dir: Path, dry_run: bool):
     token_dir.mkdir(parents=True, exist_ok=True)
     dl = skipped = failed = 0
 
-    for token in tokens:
+    total_tokens = len(tokens)
+    for i, token in enumerate(tokens):
+        if i > 0 and i % 50 == 0:
+            logger.info("  Token images: %d/%d...", i, total_tokens)
+
         dest = token_dir / f"{token['id']}.jpg"
         token["image_path"] = str(dest)
 
