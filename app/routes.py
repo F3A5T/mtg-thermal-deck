@@ -205,6 +205,7 @@ def api_deck_print():
 
     data = request.get_json(silent=True) or {}
     name = data.get("name", "").strip()
+    art = bool(data.get("art", True))
     if not name:
         return jsonify({"error": "name is required"}), 400
 
@@ -218,7 +219,7 @@ def api_deck_print():
 
     def _do():
         for _ in range(dc.quantity):
-            result["ok"] = mode.printer.print_card(dc.card)
+            result["ok"] = mode.printer.print_card(dc.card, art=art)
         mode.last_printed = f"Printed: {dc.quantity}x {dc.name}"
 
     t = threading.Thread(target=_do, daemon=True)
@@ -240,8 +241,9 @@ def api_deck_print_all():
     if mode._printing:
         return jsonify({"error": "Already printing"}), 409
 
-    mode.handle_button("X_HOLD_FIRST")  # arms confirm
-    mode.handle_button("X")             # confirms + starts
+    data = request.get_json(silent=True) or {}
+    art = bool(data.get("art", True))
+    mode._trigger_print_all(art=art)
     return jsonify({"ok": True, "print_total": mode._print_total})
 
 
@@ -309,6 +311,7 @@ def api_cards_print():
     printer = current_app.printer  # type: ignore[attr-defined]
     data = request.get_json(silent=True) or {}
     card_id = data.get("id", "")
+    art = bool(data.get("art", True))
 
     card = cm.get_card_by_id(card_id)
     if not card:
@@ -319,7 +322,7 @@ def api_cards_print():
     result = {"ok": False}
 
     def _do():
-        result["ok"] = printer.print_card(card)
+        result["ok"] = printer.print_card(card, art=art)
 
     t = threading.Thread(target=_do, daemon=True)
     t.start()

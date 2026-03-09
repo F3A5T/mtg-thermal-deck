@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Download card data and artwork from Scryfall for Momir Basic.
+Download card data and artwork from Scryfall.
 
 - Pulls Scryfall's oracle_cards bulk data
-- Streams and filters for creature cards (low memory usage)
+- Streams and filters all non-token paper cards (low memory usage)
 - Downloads art_crop images organised by CMC
 - Writes data/cards/index.json for the main app to load
 
@@ -53,8 +53,8 @@ def _get_bulk_url() -> str:
 # Stream-parse and filter in one pass (avoids loading full JSON into RAM)
 # ---------------------------------------------------------------------------
 
-def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
-    """Download bulk data and stream-parse it, keeping only creature cards.
+def _stream_all_cards(url: str, only_cmcs: list | None = None) -> dict:
+    """Download bulk data and stream-parse it, keeping all non-token paper cards.
 
     Uses ijson to iterate one card at a time so the Pi Zero's 512 MB RAM
     is never overwhelmed by the ~300 MB JSON blob.
@@ -69,10 +69,11 @@ def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
         for card in ijson.items(r.raw, "item"):
             total_seen += 1
             if total_seen % 5000 == 0:
-                logger.info("  Scanned %d cards, kept %d creatures so far...", total_seen, total_kept)
+                logger.info("  Scanned %d cards, kept %d so far...", total_seen, total_kept)
 
             type_line = card.get("type_line") or ""
-            if "Creature" not in type_line:
+            # Skip tokens (handled separately) and digital-only cards
+            if "Token" in type_line:
                 continue
             if card.get("digital", False):
                 continue
@@ -117,7 +118,7 @@ def _stream_creatures(url: str, only_cmcs: list | None = None) -> dict:
             total_kept += 1
 
     total = sum(len(v) for v in by_cmc.values())
-    logger.info("Found %d creatures across CMC %s", total, sorted(by_cmc.keys()))
+    logger.info("Found %d cards across CMC %s", total, sorted(by_cmc.keys()))
     return by_cmc
 
 
@@ -324,7 +325,7 @@ def _fetch_tokens(data_dir: Path, dry_run: bool):
 # ---------------------------------------------------------------------------
 
 def main():
-    p = argparse.ArgumentParser(description="Fetch MTG card data for the console printer")
+    p = argparse.ArgumentParser(description="Fetch MTG card data (all types) for the console printer")
     p.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     p.add_argument("--max-per-cmc", type=int, default=None,
                    help="Download at most N images per CMC (useful for testing)")
@@ -341,7 +342,7 @@ def main():
     try:
         if not args.tokens_only:
             url = _get_bulk_url()
-            by_cmc = _stream_creatures(url, only_cmcs=args.cmc)
+            by_cmc = _stream_all_cards(url, only_cmcs=args.cmc)
             by_cmc = _download_images(by_cmc, args.data_dir, args.max_per_cmc, args.dry_run)
             if not args.dry_run:
                 _save_index(by_cmc, args.data_dir)

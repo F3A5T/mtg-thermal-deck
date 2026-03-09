@@ -119,6 +119,7 @@ class CardBrowserMode(BaseMode):
         self.status_message: str = ""
         self.last_card: Optional["Card"] = None
         self._printing: bool = False
+        self._print_art: bool = True
 
         self._apply_filters()
 
@@ -141,6 +142,7 @@ class CardBrowserMode(BaseMode):
             ("B", "Previous card"),
             ("X", "Print current card"),
             ("Hold A", "Jump to random card"),
+            ("Hold B", "Toggle art on/off"),
             ("Hold X", "Filter menu"),
             ("Y", "Next mode"),
             ("Hold Y", "This help"),
@@ -205,6 +207,9 @@ class CardBrowserMode(BaseMode):
             self._trigger_print()
         elif button == "A_HOLD_FIRST":
             self._jump_random()
+        elif button == "B_HOLD_FIRST":
+            self._print_art = not self._print_art
+            self.status_message = f"Art {'ON' if self._print_art else 'OFF'}"
         elif button == "X_HOLD_FIRST":
             self._submode = _FILT_CAT
             self.status_message = ""
@@ -409,7 +414,7 @@ class CardBrowserMode(BaseMode):
         self.status_message = "Printing..."
 
         def _do():
-            success = self.printer.print_card(card)
+            success = self.printer.print_card(card, art=self._print_art)
             self.last_card = card
             self.status_message = f"Printed: {card.name}" if success else "Print failed!"
             self._printing = False

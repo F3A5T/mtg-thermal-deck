@@ -322,7 +322,7 @@ class DecklistMode(BaseMode):
     # Print helpers
     # ------------------------------------------------------------------
 
-    def _trigger_print_current(self) -> None:
+    def _trigger_print_current(self, art: bool = True) -> None:
         if not self._found or self._printing:
             return
         dc = self._found[self._index]
@@ -334,14 +334,14 @@ class DecklistMode(BaseMode):
 
         def _do():
             for _ in range(copies):
-                self.printer.print_card(dc.card)
+                self.printer.print_card(dc.card, art=art)
             self.last_printed = f"Printed: {copies}x {dc.name}"
             self.status_message = ""
             self._printing = False
 
         threading.Thread(target=_do, daemon=True, name="print-job").start()
 
-    def _trigger_print_all(self) -> None:
+    def _trigger_print_all(self, art: bool = True) -> None:
         if self._printing:
             return
         printable = [
@@ -361,7 +361,7 @@ class DecklistMode(BaseMode):
         def _do():
             for dc in printable:
                 for _ in range(dc.quantity):
-                    self.printer.print_card(dc.card)
+                    self.printer.print_card(dc.card, art=art)
                     self._print_progress += 1
             self.last_printed = f"Printed deck: {total_copies} cards"
             self.status_message = ""

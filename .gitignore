@@ -6,7 +6,7 @@ __pycache__/
 *.egg-info/
 
 # Data — images are large, only commit the index if desired
-data/cards/*/
+data/cards/*
 # Uncomment to also ignore the index:
 # data/cards/index.json
 

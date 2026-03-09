@@ -430,6 +430,9 @@
   <div class="btn-group" style="margin-bottom: 10px;">
     <button onclick="browserRandom()">RANDOM</button>
     <button class="print-btn" id="b-print-btn" onclick="browserPrint()" disabled>PRINT</button>
+    <label style="font-size:0.85rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
+      <input type="checkbox" id="b-art" checked> Art
+    </label>
   </div>
 
   <div id="b-status" style="text-align:center; min-height:18px; font-size:0.85rem;"></div>
@@ -452,6 +455,9 @@
     </div>
     <div class="btn-group" style="margin-bottom: 10px;">
       <button class="print-btn" onclick="deckPrintAll()">PRINT ALL</button>
+      <label style="font-size:0.85rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input type="checkbox" id="deck-art" checked> Art
+      </label>
       <div id="deck-print-progress" class="hidden" style="color:#888; font-size:0.8rem; margin-top:6px;"></div>
     </div>
     <div id="deck-card-list" style="max-height:320px; overflow-y:auto; border:1px solid #2a2a40; border-radius:4px;"></div>
@@ -752,7 +758,7 @@
       const r = await fetch('/api/cards/print', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: _browserCard.id}),
+        body: JSON.stringify({id: _browserCard.id, art: document.getElementById('b-art').checked}),
       });
       const d = await r.json();
       document.getElementById('b-status').textContent =
@@ -861,7 +867,7 @@
       const r = await fetch('/api/deck/print', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name}),
+        body: JSON.stringify({name, art: document.getElementById('deck-art').checked}),
       });
       const d = await r.json();
       btn.textContent = d.ok ? '✓' : '✗';
@@ -874,7 +880,11 @@
 
   async function deckPrintAll() {
     if (_deckPrinting) return;
-    const r = await fetch('/api/deck/print-all', {method: 'POST'});
+    const r = await fetch('/api/deck/print-all', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({art: document.getElementById('deck-art').checked}),
+    });
     const d = await r.json();
     if (!r.ok) {
       document.getElementById('deck-status').textContent = d.error || 'Error';

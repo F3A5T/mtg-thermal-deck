@@ -120,7 +120,7 @@ class MomirMode(BaseMode):
         draw.text(((width - cmc_w) // 2, 36), cmc_str, font=_FONT_CMC, fill=_WHITE)
 
         # --- Card count ---
-        count = self.card_manager.get_card_count_at_cmc(self.cmc)
+        count = len(self.card_manager.filter_cards(cmc=self.cmc, type_keyword="creature"))
         count_str = f"{count} card{'s' if count != 1 else ''}"
         bbox = draw.textbbox((0, 0), count_str, font=_FONT_SM)
         count_w = bbox[2] - bbox[0]
@@ -154,7 +154,7 @@ class MomirMode(BaseMode):
         return {
             "mode": self.name,
             "cmc": self.cmc,
-            "card_count": self.card_manager.get_card_count_at_cmc(self.cmc),
+            "card_count": len(self.card_manager.filter_cards(cmc=self.cmc, type_keyword="creature")),
             "printing": self._printing,
             "last_card": self.last_card.to_dict() if self.last_card else None,
             "status_message": self.status_message,
@@ -165,9 +165,9 @@ class MomirMode(BaseMode):
     # ------------------------------------------------------------------
 
     def _trigger_print(self):
-        cards = self.card_manager.get_cards_at_cmc(self.cmc)
+        cards = self.card_manager.filter_cards(cmc=self.cmc, type_keyword="creature")
         if not cards:
-            self.status_message = f"No cards at CMC {self.cmc}!"
+            self.status_message = f"No creatures at CMC {self.cmc}!"
             return
 
         card = random.choice(cards)

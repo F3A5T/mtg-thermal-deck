@@ -40,7 +40,7 @@ development machine, then rsync the `data/` folder over:
 # On this machine — install deps if needed
 pip install requests ijson
 
-# Full card + token database
+# Full card + token database (all types: creatures, instants, sorceries, enchantments, artifacts, planeswalkers, lands)
 python scripts/fetch_cards.py
 
 # Tokens only (faster)
@@ -122,6 +122,7 @@ Browse and print any card in the database. Supports on-screen filtering by CMC, 
 | B | Previous card |
 | X | Print current card |
 | Hold A | Jump to random card in current filter |
+| Hold B | Toggle art on/off |
 | Hold X | Enter filter menu |
 | Y | Cycle to next mode |
 | Hold Y | Help overlay |
@@ -189,8 +190,8 @@ Available at `http://<pi-ip>:5000` from any device on the network. The **Info** 
 - **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
 - **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
 - **System** — cycle mode, reload card database
-- **Card Browser** — always-visible panel; filter by CMC/colour/type, Random, Print
-- **Decklist** — paste a Moxfield/Archidekt URL; view matched cards, Print individual or Print All
+- **Card Browser** — always-visible panel; filter by CMC/colour/type, Random, Print (with Art toggle)
+- **Decklist** — paste a Moxfield/Archidekt URL; view matched cards, Print individual or Print All (with Art toggle)
 
 ## Print format
 

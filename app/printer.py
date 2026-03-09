@@ -55,15 +55,16 @@ class Printer:
     # Printing
     # ------------------------------------------------------------------
 
-    def print_card(self, card: "Card") -> bool:
-        """Print artwork + text for a card. Returns True on success."""
+    def print_card(self, card: "Card", art: bool = True) -> bool:
+        """Print a card. Set art=False to skip artwork. Returns True on success."""
         if self.mock:
             logger.info(
-                "[MOCK PRINT] %s  CMC:%s  %s/%s",
+                "[MOCK PRINT] %s  CMC:%s  %s/%s  art=%s",
                 card.name,
                 card.cmc,
                 card.power,
                 card.toughness,
+                art,
             )
             return True
 
@@ -74,7 +75,8 @@ class Printer:
             return False
 
         try:
-            self._print_artwork(card)
+            if art:
+                self._print_artwork(card)
             self._print_text(card)
             self._p.ln(4)
             return True
