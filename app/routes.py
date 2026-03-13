@@ -143,6 +143,35 @@ def api_reload():
     return jsonify({"ok": True})
 
 
+@bp.route("/api/hotspot", methods=["POST"])
+def api_hotspot():
+    """Toggle the WiFi hotspot on or off."""
+    from app.modes.info import _hotspot_active, HOTSPOT_CON
+    import subprocess
+    data = request.get_json(silent=True) or {}
+    # Optional: pass {"active": true/false} to force a state, else toggle
+    want = data.get("active")
+    currently = _hotspot_active()
+    if want is None:
+        want = not currently
+    if bool(want) == currently:
+        return jsonify({"ok": True, "hotspot_active": currently, "changed": False})
+    try:
+        if want:
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "up", HOTSPOT_CON],
+                check=True, capture_output=True,
+            )
+        else:
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "down", HOTSPOT_CON],
+                check=True, capture_output=True,
+            )
+        return jsonify({"ok": True, "hotspot_active": want, "changed": True})
+    except subprocess.CalledProcessError as exc:
+        return jsonify({"ok": False, "error": exc.stderr.decode(errors="replace")}), 500
+
+
 # ------------------------------------------------------------------
 # Decklist API
 # ------------------------------------------------------------------

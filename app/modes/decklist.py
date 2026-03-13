@@ -61,6 +61,8 @@ _DIM   = (60, 60, 75)
 
 class DecklistMode(BaseMode):
 
+    display_in_rotation = False  # Web UI only — not in physical display cycle
+
     def __init__(self, card_manager: "CardManager", printer: "Printer", tokens_path: str):
         self.card_manager = card_manager
         self.printer = printer

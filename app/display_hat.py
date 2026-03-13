@@ -17,6 +17,8 @@ import logging
 import time
 from typing import Callable, Optional
 
+SCREENSAVER_TIMEOUT = 30  # seconds of inactivity before blanking the display
+
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,8 @@ class DisplayHat:
         self._display = None
         self._callback: Optional[Callable[[str], None]] = None
         self._prev_buttons: dict = {}
+        self._last_activity: float = time.monotonic()
+        self._screen_on: bool = True
 
         if not mock:
             self._init_hardware()
@@ -107,14 +111,22 @@ class DisplayHat:
             was_pressed = self._prev_buttons[hw_btn]
 
             if pressed and not was_pressed:
-                # Rising edge — start timing
-                # Y fires on release so hold can be detected first; all others fire now
+                # Rising edge — wake screensaver if needed, then start timing
+                if not self._screen_on:
+                    self._wake()
+                    self._prev_buttons[hw_btn] = pressed
+                    continue  # swallow this press — it was just a wake tap
+                self._last_activity = now
                 self._press_start[hw_btn] = now
                 self._last_repeat[hw_btn] = None
                 if label != BUTTON_Y and self._callback:
                     self._callback(label)
 
             elif pressed and was_pressed:
+                if not self._screen_on:
+                    self._prev_buttons[hw_btn] = pressed
+                    continue
+                self._last_activity = now
                 # Held — fire _HOLD_FIRST once at threshold, then _HOLD repeatedly
                 start = self._press_start.get(hw_btn)
                 if start and now - start >= self.LONG_PRESS_S:
@@ -138,11 +150,39 @@ class DisplayHat:
     def update(self, image: Image.Image):
         """Paste rendered frame into the persistent buffer and push to display."""
         if not self.mock and self._display:
+            idle = time.monotonic() - self._last_activity
+            if idle >= SCREENSAVER_TIMEOUT:
+                if self._screen_on:
+                    self._sleep()
+                return  # don't push a frame while blanked
+            if not self._screen_on:
+                self._wake()
             try:
                 self._buf.paste(image)
                 self._display.display()
             except Exception as exc:
                 logger.error("Display update error: %s", exc)
+
+    def _sleep(self):
+        """Blank the display and turn off backlight."""
+        try:
+            self._buf.paste((0, 0, 0), [0, 0, self.WIDTH, self.HEIGHT])
+            self._display.display()
+            self._display.set_backlight(0)
+            self._screen_on = False
+            logger.debug("Screensaver: display off")
+        except Exception as exc:
+            logger.error("Screensaver sleep error: %s", exc)
+
+    def _wake(self):
+        """Turn backlight back on."""
+        try:
+            self._display.set_backlight(1)
+            self._screen_on = True
+            self._last_activity = time.monotonic()
+            logger.debug("Screensaver: display on")
+        except Exception as exc:
+            logger.error("Screensaver wake error: %s", exc)
 
     def blank_canvas(self) -> tuple[Image.Image, ImageDraw.ImageDraw]:
         """Return a fresh off-screen image to draw into this frame."""

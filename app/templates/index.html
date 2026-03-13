@@ -378,7 +378,9 @@
   <div class="btn-group">
     <button class="secondary" onclick="cycleMode()">Next Mode (Y)</button>
     <button class="secondary" onclick="reloadCards()">Reload Cards</button>
+    <button class="secondary" id="hotspot-btn" onclick="toggleHotspot()">Hotspot: ...</button>
   </div>
+  <div id="hotspot-status" style="font-size:0.8rem; color:#888; margin-top:4px; min-height:16px;"></div>
   <div class="divider"></div>
   <div class="mode-bar">
     Modes: <span id="modes-list">{{ status.modes | join(' / ') }}</span>
@@ -537,6 +539,14 @@
     document.getElementById('mode-name').textContent = d.current_mode;
     document.getElementById('modes-list').textContent = d.modes.join(' / ');
 
+    // Hotspot button state
+    if (d.hotspot_active !== undefined) {
+      const btn = document.getElementById('hotspot-btn');
+      if (!btn.disabled) {
+        btn.textContent = d.hotspot_active ? 'Hotspot: ON' : 'Hotspot: OFF';
+      }
+    }
+
     const isTokens = d.current_mode === 'Tokens';
     const isMomir  = d.current_mode === 'Momir Basic';
     const isLife   = d.current_mode === 'Life Tracker';
@@ -675,6 +685,40 @@
     await fetch('/api/reload', {method: 'POST'});
     _tokensLoaded = false;
     fetchStatus();
+  }
+
+  async function toggleHotspot() {
+    const btn = document.getElementById('hotspot-btn');
+    const msg = document.getElementById('hotspot-status');
+    btn.disabled = true;
+    msg.textContent = 'Toggling hotspot...';
+    try {
+      const r = await fetch('/api/hotspot', {method: 'POST'});
+      const d = await r.json();
+      if (d.ok) {
+        const on = d.hotspot_active;
+        btn.textContent = on ? 'Hotspot: ON' : 'Hotspot: OFF';
+        msg.textContent = on ? 'Connected at 10.42.0.1:5000' : 'Hotspot stopped';
+      } else {
+        msg.textContent = 'Error: ' + (d.error || 'unknown');
+      }
+    } catch(e) {
+      msg.textContent = 'Request failed';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function _updateHotspotBtn() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      const on = d.hotspot_active;
+      if (on !== undefined) {
+        document.getElementById('hotspot-btn').textContent =
+          on ? 'Hotspot: ON' : 'Hotspot: OFF';
+      }
+    } catch(_) {}
   }
 
   setInterval(fetchStatus, 2000);

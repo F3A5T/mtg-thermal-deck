@@ -42,6 +42,7 @@ _FONT_HELP_BODY  = _best_font(13)
 class BaseMode(ABC):
 
     _show_help: bool = False
+    display_in_rotation: bool = True  # Set False to hide from physical display cycle
 
     @property
     @abstractmethod

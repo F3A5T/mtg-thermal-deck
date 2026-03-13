@@ -40,7 +40,8 @@ development machine, then rsync the `data/` folder over:
 # On this machine — install deps if needed
 pip install requests ijson
 
-# Full card + token database (all types: creatures, instants, sorceries, enchantments, artifacts, planeswalkers, lands)
+# Full card + token database (all types: creatures, instants, sorceries,
+# enchantments, artifacts, planeswalkers, lands)
 python scripts/fetch_cards.py
 
 # Tokens only (faster)
@@ -63,6 +64,21 @@ cd ~/mtg-console && source .venv/bin/activate
 python scripts/fetch_cards.py
 ```
 
+### WiFi hotspot setup
+
+The Pi can act as a WiFi hotspot while staying connected to your router simultaneously (AP+STA mode). Run once on the Pi:
+
+```bash
+bash scripts/setup_hotspot.sh [SSID] [PASSWORD]
+# defaults: SSID=mtg-console, PASSWORD=mtgprinter
+```
+
+This creates a virtual `uap0` interface alongside `wlan0`, installs a systemd service to recreate it on boot, creates the NetworkManager connection profile, and adds a passwordless sudoers rule for `nmcli`. After setup, the hotspot can be toggled on/off from the Info screen (X button) or the web UI System panel.
+
+- `wlan0` → stays on your router (SSH and internet unaffected)
+- `uap0` → hotspot at `10.42.0.1`, web UI at `http://10.42.0.1:5000`
+- The AP and your router must be on the same WiFi channel
+
 ## Service management
 
 The app runs as a systemd service and starts on every boot.
@@ -76,11 +92,13 @@ sudo systemctl stop mtg-console      # stop
 
 ## Modes
 
-Press **Y** to cycle through modes. **Hold Y** on any mode to show its help overlay.
+Press **Y** to cycle through modes. **Hold Y** on any mode to show its help overlay. The display blanks and backlight turns off after **30 seconds** of inactivity to prevent burn-in; any button press wakes it (the wake press is swallowed).
+
+Card Browser and Decklist are **web UI only** — they do not appear in the physical display rotation.
 
 ### Momir Basic
 
-Pick a CMC and print a random creature at that cost.
+Pick a CMC and print a random creature at that cost. The card count shown is creatures only, regardless of how many non-creature cards are in the database.
 
 | Button | Action |
 |---|---|
@@ -112,50 +130,6 @@ Scroll through every paper token sorted alphabetically, then by P/T. Switching t
 | X | Jump to first token under this letter |
 | Hold X | Cancel, go back without jumping |
 
-### Card Browser
-
-Browse and print any card in the database. Supports on-screen filtering by CMC, colour, and type.
-
-| Button | Action |
-|---|---|
-| A | Next card |
-| B | Previous card |
-| X | Print current card |
-| Hold A | Jump to random card in current filter |
-| Hold B | Toggle art on/off |
-| Hold X | Enter filter menu |
-| Y | Cycle to next mode |
-| Hold Y | Help overlay |
-
-**Filter menu** — choose CMC, COLOR, or TYPE with A/B; X selects:
-
-| Button | Action |
-|---|---|
-| A / B | Cycle filter categories |
-| X | Enter sub-selector |
-| Hold X | Cancel |
-
-**Sub-selector** (CMC / COLOR / TYPE):
-
-| Button | Action |
-|---|---|
-| A / B | Cycle values |
-| X | Apply filter |
-| Hold X | Back to category |
-
-### Decklist
-
-Load a deck from Moxfield or Archidekt via the web UI, then browse and print cards on-screen. Cards are matched by name against the local database; unrecognised cards are shown but cannot be printed. Load the deck via the web panel — URL entry on hardware is not supported.
-
-| Button | Action |
-|---|---|
-| A | Next card in deck |
-| B | Previous card in deck |
-| X | Print current card (all copies) |
-| Hold X | Arm print-all (press X again to confirm) |
-| Y | Cycle to next mode |
-| Hold Y | Help overlay |
-
 ### Life Tracker
 
 4-player life totals starting at 40. The display splits into four quadrants, one per player. The selected player is highlighted with a gold border.
@@ -175,32 +149,49 @@ Life total turns red at 10 or below.
 
 ### Info
 
-Shows the Pi's IP address, hostname, and uptime. Useful for finding the web UI address after a fresh boot.
+Shows WiFi IP (`wlan0`), hotspot IP (`10.42.0.1`, green when active), hostname, and uptime. X toggles the hotspot on/off; the button hint updates to show the current action (`X:HOT ON` or `X:HOT OFF`).
 
 | Button | Action |
 |---|---|
+| X | Toggle WiFi hotspot on/off |
 | Y | Cycle to next mode |
 | Hold Y | Help overlay |
 
+Requires `scripts/setup_hotspot.sh` to have been run once to create the connection profile.
+
 ## Web UI
 
-Available at `http://<pi-ip>:5000` from any device on the network. The **Info** screen on the display shows the IP address.
+Available at `http://<pi-ip>:5000` (or `http://10.42.0.1:5000` when hotspot is on) from any device on the network. The Info screen shows both IPs.
+
+### Panels
 
 - **Momir Basic** — CMC spinner, quick-select buttons 0–16, Print
 - **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
 - **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
-- **System** — cycle mode, reload card database
-- **Card Browser** — always-visible panel; filter by CMC/colour/type, Random, Print (with Art toggle)
-- **Decklist** — paste a Moxfield/Archidekt URL; view matched cards, Print individual or Print All (with Art toggle)
+- **System** — cycle mode, reload card database, hotspot toggle (ON/OFF button updates live)
+- **Card Browser** — filter by CMC/colour/type, Random, Print; **Art** checkbox skips artwork when unchecked
+- **Decklist** — paste a Moxfield or Archidekt URL, view matched cards grouped by category, Print individual cards or Print All mainboard+commanders; **Art** checkbox applies to all prints
+
+### Art toggle
+
+Every print action (Card Browser, Decklist per-card, Decklist Print All) has an **Art** checkbox. Uncheck it to print text only — faster and uses less paper. On the physical display, **Hold B** in Card Browser toggles art on/off (status shown on screen).
+
+### Decklist
+
+1. Paste a Moxfield (`moxfield.com/decks/...`) or Archidekt (`archidekt.com/decks/...`) URL
+2. Click **Load** — the app fetches the decklist and resolves each card name against the local database
+3. Cards show ✓ (found) or ✗ (not in local DB)
+4. Print individual cards (all copies printed) or **Print All** to print the full mainboard + commanders
+5. Progress bar shown during Print All
 
 ## Print format
 
-Each printed card has:
-1. **Art crop** — full-width artwork image
+Each printed card outputs:
+1. **Art crop** — full-width artwork image (skipped if Art is off)
 2. **Card name** — bold, centred
-3. **Mana cost** — text (e.g. `{3}{G}{G}`)
-4. **Type line** — (e.g. `Legendary Creature — Elf Warrior`)
-5. **Rules text** — word-wrapped
+3. **Mana cost** — e.g. `{3}{G}{G}`
+4. **Type line** — e.g. `Legendary Creature — Elf Warrior`
+5. **Rules text** — word-wrapped at 42 characters
 6. **Power / Toughness** — centred, bold (creatures only)
 
 ## Development without hardware
@@ -227,12 +218,12 @@ All settings in [config.py](config.py) can be overridden with environment variab
 | `MOCK_PRINTER` | `false` | Dry-run printer |
 | `MOCK_DISPLAY` | `false` | Skip Display HAT init |
 
+Screensaver timeout is set in [app/display_hat.py](app/display_hat.py) as `SCREENSAVER_TIMEOUT` (default 30 seconds).
+
 ## Adding a new mode
 
 1. Create `app/modes/your_mode.py` subclassing `BaseMode`
 2. Implement `name`, `render()`, `handle_button()`, and `get_status()`
 3. Optionally override `on_activate()` to reset state when the mode is switched to
-4. Register an instance in the `modes = [...]` list in `app/__init__.py`
-
-Planned future modes:
-- **Decklist mode** — import a Moxfield deck URL and print cards from it
+4. Set `display_in_rotation = False` if the mode should only be accessible via the web UI
+5. Register an instance in the `modes = [...]` list in `app/__init__.py`

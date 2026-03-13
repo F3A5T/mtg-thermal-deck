@@ -91,6 +91,8 @@ _FILT_TYPE  = "filt_type"
 
 class CardBrowserMode(BaseMode):
 
+    display_in_rotation = False  # Web UI only — not in physical display cycle
+
     def __init__(self, card_manager: "CardManager", printer: "Printer"):
         self.card_manager = card_manager
         self.printer = printer
