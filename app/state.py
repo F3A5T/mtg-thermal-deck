@@ -26,10 +26,13 @@ class AppState:
         self.current_mode.on_activate()
 
     def get_status(self) -> dict:
-        from app.modes.info import _hotspot_active
+        from app.modes.info import _hotspot_active, _get_battery
+        bat_pct, bat_charging = _get_battery()
         return {
             "current_mode": self.current_mode.name,
             "modes": [m.name for m in self.modes if m.display_in_rotation],
             "status": self.current_mode.get_status(),
             "hotspot_active": _hotspot_active(),
+            "battery_pct": bat_pct,
+            "battery_charging": bat_charging,
         }

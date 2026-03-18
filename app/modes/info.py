@@ -12,12 +12,47 @@ import socket
 import struct
 import subprocess
 import threading
+import time
 
 from PIL import ImageDraw, ImageFont
 
 from .base import BaseMode
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# PiSugar battery query (cached to avoid a socket call every render frame)
+# ---------------------------------------------------------------------------
+_PISUGAR_HOST = "127.0.0.1"
+_PISUGAR_PORT = 8423
+_BATTERY_CACHE_TTL = 5  # seconds
+
+_battery_cache: dict = {"pct": None, "charging": False, "ts": 0.0}
+
+
+def _pisugar_query(cmd: str) -> str:
+    """Send a single command to pisugar-server and return the response."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1.0)
+        s.connect((_PISUGAR_HOST, _PISUGAR_PORT))
+        s.sendall((cmd + "\n").encode())
+        return s.recv(256).decode().strip()
+
+
+def _get_battery() -> tuple[float | None, bool]:
+    """Return (battery_pct, charging). Returns (None, False) if unavailable."""
+    now = time.monotonic()
+    if now - _battery_cache["ts"] < _BATTERY_CACHE_TTL:
+        return _battery_cache["pct"], _battery_cache["charging"]
+    try:
+        pct_resp = _pisugar_query("get battery")
+        pct = float(pct_resp.split(":")[-1].strip())
+        chg_resp = _pisugar_query("get battery_charging")
+        charging = chg_resp.split(":")[-1].strip().lower() == "true"
+    except Exception:
+        pct, charging = None, False
+    _battery_cache.update({"pct": pct, "charging": charging, "ts": now})
+    return pct, charging
 
 _FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -126,8 +161,23 @@ class InfoMode(BaseMode):
             return
 
         active = _hotspot_active()
+        bat_pct, bat_charging = _get_battery()
 
         draw.text((10, 6), "SYSTEM INFO", font=_FONT_LABEL, fill=_GOLD)
+
+        # Battery — top-right corner
+        if bat_pct is not None:
+            bat_str = f"{'+ ' if bat_charging else ''}{bat_pct:.0f}%"
+            if bat_charging:
+                bat_color = _GREEN
+            elif bat_pct <= 15:
+                bat_color = _RED
+            elif bat_pct <= 30:
+                bat_color = _YELLOW
+            else:
+                bat_color = _WHITE
+            bbox = draw.textbbox((0, 0), bat_str, font=_FONT_SM)
+            draw.text((width - bbox[2] - 10, 6), bat_str, font=_FONT_SM, fill=bat_color)
 
         # Hostname + uptime on same row
         hostname = socket.gethostname()
@@ -174,6 +224,7 @@ class InfoMode(BaseMode):
 
     def get_status(self) -> dict:
         active = _hotspot_active()
+        bat_pct, bat_charging = _get_battery()
         return {
             "mode": self.name,
             "wifi_ip": _get_wifi_ip(),
@@ -183,6 +234,8 @@ class InfoMode(BaseMode):
             "uptime": _get_uptime(),
             "hotspot_active": active,
             "hotspot_ssid": HOTSPOT_CON,
+            "battery_pct": bat_pct,
+            "battery_charging": bat_charging,
         }
 
     # ------------------------------------------------------------------

@@ -374,7 +374,10 @@
 
 <!-- Mode / system controls -->
 <div class="panel">
-  <div class="label">SYSTEM</div>
+  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+    <div class="label">SYSTEM</div>
+    <div id="battery-display" style="font-size:0.85rem; color:#aaa;"></div>
+  </div>
   <div class="btn-group">
     <button class="secondary" onclick="cycleMode()">Next Mode (Y)</button>
     <button class="secondary" onclick="reloadCards()">Reload Cards</button>
@@ -545,6 +548,17 @@
       if (!btn.disabled) {
         btn.textContent = d.hotspot_active ? 'Hotspot: ON' : 'Hotspot: OFF';
       }
+    }
+
+    // Battery indicator
+    const batEl = document.getElementById('battery-display');
+    if (d.battery_pct != null) {
+      const pct = Math.round(d.battery_pct);
+      const chg = d.battery_charging;
+      batEl.textContent = (chg ? '+ ' : '') + pct + '%';
+      batEl.style.color = chg ? '#50c864' : pct <= 15 ? '#dc3c3c' : pct <= 30 ? '#dcc83c' : '#aaa';
+    } else {
+      batEl.textContent = '';
     }
 
     const isTokens = d.current_mode === 'Tokens';

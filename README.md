@@ -149,7 +149,7 @@ Life total turns red at 10 or below.
 
 ### Info
 
-Shows WiFi IP (`wlan0`), hotspot IP (`10.42.0.1`, green when active), hostname, and uptime. X toggles the hotspot on/off; the button hint updates to show the current action (`X:HOT ON` or `X:HOT OFF`).
+Shows WiFi IP (`wlan0`), hotspot IP (`10.42.0.1`, green when active), hostname, uptime, and PiSugar battery level. Battery is colour-coded: white (>30%), yellow (≤30%), red (≤15%), green when charging. X toggles the hotspot on/off; the button hint updates to show the current action (`X:HOT ON` or `X:HOT OFF`).
 
 | Button | Action |
 |---|---|
@@ -168,7 +168,7 @@ Available at `http://<pi-ip>:5000` (or `http://10.42.0.1:5000` when hotspot is o
 - **Momir Basic** — CMC spinner, quick-select buttons 0–16, Print
 - **Token Printer** — live search, A–Z letter-jump bar, Prev/Next, Print
 - **Life Tracker** — 2×2 grid, per-player −5/−1/+1/+5 buttons, Reset All
-- **System** — cycle mode, reload card database, hotspot toggle (ON/OFF button updates live)
+- **System** — cycle mode, reload card database, hotspot toggle (ON/OFF button updates live), battery % (colour-coded, updates every poll)
 - **Card Browser** — filter by CMC/colour/type, Random, Print; **Art** checkbox skips artwork when unchecked
 - **Decklist** — paste a Moxfield or Archidekt URL, view matched cards grouped by category, Print individual cards or Print All mainboard+commanders; **Art** checkbox applies to all prints
 
