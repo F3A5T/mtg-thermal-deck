@@ -42,6 +42,8 @@ pip install requests ijson
 
 # Full card + token database (all types: creatures, instants, sorceries,
 # enchantments, artifacts, planeswalkers, lands)
+# Each card entry includes set_code, set_name, set_type, and rarity —
+# required for the Draft and Sealed features to list sets and generate packs.
 python scripts/fetch_cards.py
 
 # Tokens only (faster)
@@ -183,6 +185,31 @@ Every print action (Card Browser, Decklist per-card, Decklist Print All) has an 
 3. Cards show ✓ (found) or ✗ (not in local DB)
 4. Print individual cards (all copies printed) or **Print All** to print the full mainboard + commanders
 5. Progress bar shown during Print All
+
+### Draft
+
+Virtual booster draft for 2–8 players, entirely in the browser. Available at `/draft`.
+
+1. Choose a set from the local card database (expansion/core/masters sets with ≥80 cards)
+2. Select number of seats (2–8)
+3. Share each seat URL (`/draft/<room>/seat/N`) with players
+4. Click **Start Draft** — packs are generated locally from the card DB
+5. Players pick cards from their pack; remaining cards pass left → right → left (packs 1/2/3)
+6. After all packs are drafted, each player views their pool at `/draft/<room>/pool/N`
+7. Pool is split into Creatures / Non-Creatures / Lands with card images
+8. Export as Moxfield / Archidekt text (copy or download)
+
+### Sealed
+
+Single-player sealed pool generator at `/sealed`.
+
+1. Choose a set
+2. Click **Open Sealed Pool** — server generates 6 boosters (90 cards) plus 1 bonus rare/mythic from the set
+3. Pool is displayed split into Creatures / Non-Creatures / Lands
+4. Export as Moxfield / Archidekt text (copy or download)
+5. Click **Open Another** to generate a new pool without leaving the page
+
+Both draft and sealed use the local card database and images — no internet required at play time. The set list is populated after running `fetch_cards.py`; sets with fewer than 80 cards in the DB or non-draftable set types (tokens, promo, etc.) are hidden.
 
 ## Print format
 
