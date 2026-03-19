@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, send_file
 
 bp = Blueprint("main", __name__)
 
@@ -358,3 +358,14 @@ def api_cards_print():
     t.join(timeout=30)
 
     return jsonify({"ok": result["ok"], "card": card.to_dict()})
+
+
+@bp.route("/card-image/<card_id>")
+def card_image(card_id):
+    """Serve a local card art_crop image by card ID."""
+    import os
+    cm = current_app.card_manager  # type: ignore[attr-defined]
+    card = cm.get_card_by_id(card_id)
+    if not card or not card.image_path or not os.path.exists(card.image_path):
+        return "", 404
+    return send_file(card.image_path, mimetype="image/jpeg")

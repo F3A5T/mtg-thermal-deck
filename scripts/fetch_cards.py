@@ -111,6 +111,10 @@ def _stream_all_cards(url: str, only_cmcs: list | None = None) -> dict:
                 "power": card.get("power"),
                 "toughness": card.get("toughness"),
                 "oracle_text": oracle_text,
+                "set_code": card.get("set", ""),
+                "set_name": card.get("set_name", ""),
+                "set_type": card.get("set_type", ""),
+                "rarity": card.get("rarity", "common"),
                 "image_url": image_uris["art_crop"],
                 "image_path": None,
             }

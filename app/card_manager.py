@@ -19,6 +19,10 @@ class Card:
         self.power: Optional[str] = data.get("power")
         self.toughness: Optional[str] = data.get("toughness")
         self.oracle_text: str = data.get("oracle_text", "")
+        self.set_code: str = data.get("set_code", "")
+        self.set_name: str = data.get("set_name", "")
+        self.set_type: str = data.get("set_type", "")
+        self.rarity: str = data.get("rarity", "common")
         self.image_path: Optional[str] = data.get("image_path")
 
     def to_dict(self) -> dict:
@@ -114,6 +118,36 @@ class CardManager:
     ) -> Optional[Card]:
         pool = self.filter_cards(cmc=cmc, color=color, type_keyword=type_keyword)
         return random.choice(pool) if pool else None
+
+    def get_set_list(self) -> list:
+        """Return a list of sets present in the local DB, sorted by name."""
+        seen: dict[str, dict] = {}
+        counts: dict[str, int] = {}
+        for cards in self._index.values():
+            for c in cards:
+                if not c.set_code:
+                    continue
+                if c.set_code not in seen:
+                    seen[c.set_code] = {
+                        "code": c.set_code,
+                        "name": c.set_name or c.set_code,
+                        "set_type": c.set_type,
+                    }
+                counts[c.set_code] = counts.get(c.set_code, 0) + 1
+        result = []
+        for code, info in seen.items():
+            result.append({
+                "code": code,
+                "name": info["name"],
+                "set_type": info["set_type"],
+                "card_count": counts.get(code, 0),
+                "released_at": "",
+            })
+        return sorted(result, key=lambda x: x["name"])
+
+    def get_cards_by_set(self, set_code: str) -> List["Card"]:
+        """Return all cards with the given set_code."""
+        return [c for cards in self._index.values() for c in cards if c.set_code == set_code]
 
     def reload(self):
         self._index.clear()

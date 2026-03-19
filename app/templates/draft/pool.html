@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft Pool — {{ seat_name }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #12121e; color: #e0e0e0; font-family: monospace; padding: 16px; }
+  h1 { color: #d4af37; font-size: 1.2rem; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.8rem; margin-bottom: 20px; }
+  .panel { background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+  .label { color: #d4af37; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .export-box {
+    width: 100%; background: #0d0d1a; color: #e0e0e0; border: 1px solid #2a2a40;
+    border-radius: 4px; padding: 10px; font-family: monospace; font-size: 0.8rem;
+    resize: vertical; min-height: 200px;
+  }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  button {
+    padding: 8px 16px; border: none; border-radius: 4px; font-family: monospace;
+    cursor: pointer; font-size: 0.85rem;
+  }
+  .btn-copy { background: #d4af37; color: #12121e; font-weight: bold; }
+  .btn-copy:hover { background: #c09b20; }
+  .btn-dl { background: #2a2a40; color: #e0e0e0; }
+  .btn-dl:hover { background: #3a3a50; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+  .card-img { width: 100%; border-radius: 4px; display: block; }
+  .card-label { font-size: 0.65rem; color: #888; text-align: center; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .section-header { color: #888; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; margin: 14px 0 8px; border-bottom: 1px solid #2a2a40; padding-bottom: 4px; }
+  a { color: #d4af37; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<h1>{{ seat_name }} — Draft Pool</h1>
+<p class="subtitle">{{ set_name }} · {{ picks | length }} cards</p>
+
+<div class="panel">
+  <div class="label">Export (Moxfield / Archidekt format)</div>
+  <textarea class="export-box" id="export-text" readonly>{{ export }}</textarea>
+  <div class="btn-row">
+    <button class="btn-copy" onclick="copyExport()">Copy to Clipboard</button>
+    <button class="btn-dl" onclick="downloadExport()">Download .txt</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="label">Card Pool ({{ picks | length }} cards)</div>
+
+  {% set creatures = picks | selectattr("type_line", "containing", "Creature") | list %}
+  {% set noncreatures = picks | rejectattr("type_line", "containing", "Creature") | rejectattr("type_line", "containing", "Land") | list %}
+  {% set lands = picks | selectattr("type_line", "containing", "Land") | list %}
+
+  {% if creatures %}
+  <div class="section-header">Creatures ({{ creatures | length }})</div>
+  <div class="card-grid">
+    {% for card in creatures %}
+    <div>
+      <img class="card-img" src="{{ card.image_url }}" alt="{{ card.name }}" loading="lazy">
+      <div class="card-label" title="{{ card.name }}">{{ card.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if noncreatures %}
+  <div class="section-header">Non-Creatures ({{ noncreatures | length }})</div>
+  <div class="card-grid">
+    {% for card in noncreatures %}
+    <div>
+      <img class="card-img" src="{{ card.image_url }}" alt="{{ card.name }}" loading="lazy">
+      <div class="card-label" title="{{ card.name }}">{{ card.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if lands %}
+  <div class="section-header">Lands ({{ lands | length }})</div>
+  <div class="card-grid">
+    {% for card in lands %}
+    <div>
+      <img class="card-img" src="{{ card.image_url }}" alt="{{ card.name }}" loading="lazy">
+      <div class="card-label" title="{{ card.name }}">{{ card.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<a href="/draft/{{ session_id }}">← Back to room</a>
+
+<script>
+function copyExport() {
+  const text = document.getElementById('export-text').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+  });
+}
+
+function downloadExport() {
+  const text = document.getElementById('export-text').value;
+  const blob = new Blob([text], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'draft-pool.txt';
+  a.click();
+}
+</script>
+</body>
+</html>

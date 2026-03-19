@@ -72,6 +72,12 @@ def create_app(config=None) -> Flask:
     from app.routes import bp
     app.register_blueprint(bp)
 
+    from app.draft import draft_bp
+    app.register_blueprint(draft_bp)
+
+    from app.sealed import sealed_bp
+    app.register_blueprint(sealed_bp)
+
     # ----------------------------------------------------------------
     # Background threads
     # ----------------------------------------------------------------

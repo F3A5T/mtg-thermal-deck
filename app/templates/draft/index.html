@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTG Draft</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #12121e; color: #e0e0e0; font-family: monospace; padding: 20px; min-height: 100vh; }
+  h1 { color: #d4af37; font-size: 1.4rem; margin-bottom: 4px; }
+  h2 { color: #d4af37; font-size: 1rem; margin-bottom: 12px; }
+  .subtitle { color: #666; font-size: 0.8rem; margin-bottom: 24px; }
+  .panel { background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 6px; padding: 16px; margin-bottom: 16px; max-width: 600px; }
+  label { display: block; color: #888; font-size: 0.8rem; margin-bottom: 4px; margin-top: 12px; }
+  input[type=text], input[type=number], select {
+    width: 100%; background: #0d0d1a; color: #e0e0e0; border: 1px solid #2a2a40;
+    border-radius: 4px; padding: 8px; font-family: monospace; font-size: 0.9rem;
+  }
+  input[type=text]:focus, select:focus { outline: none; border-color: #d4af37; }
+  .search-row { position: relative; }
+  #set-search { margin-bottom: 4px; }
+  #set-list { max-height: 300px; overflow-y: auto; border: 1px solid #2a2a40; border-radius: 4px; background: #0d0d1a; }
+  .set-item {
+    padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #1a1a2e;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.85rem;
+  }
+  .set-item:hover, .set-item.selected { background: #2a2a40; color: #d4af37; }
+  .set-item .set-count { color: #555; font-size: 0.75rem; }
+  .seats-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .seat-btn {
+    width: 44px; height: 44px; border: 2px solid #2a2a40; border-radius: 6px;
+    background: #0d0d1a; color: #e0e0e0; font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-family: monospace;
+  }
+  .seat-btn.active { border-color: #d4af37; background: #1a1a2e; color: #d4af37; }
+  button.start {
+    margin-top: 16px; width: 100%; padding: 12px; background: #d4af37; color: #12121e;
+    border: none; border-radius: 4px; font-size: 1rem; font-family: monospace;
+    font-weight: bold; cursor: pointer;
+  }
+  button.start:hover { background: #c09b20; }
+  button.start:disabled { background: #444; color: #666; cursor: not-allowed; }
+  .error { color: #e05555; background: #1a0d0d; border: 1px solid #5a1a1a; border-radius: 4px; padding: 10px; margin-bottom: 12px; }
+  .spinner { text-align: center; color: #666; padding: 20px; }
+  a { color: #d4af37; }
+  .back { font-size: 0.8rem; color: #555; display: block; margin-bottom: 16px; }
+  #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99; align-items: center; justify-content: center; font-size: 1.2rem; color: #d4af37; }
+  #loading-overlay.show { display: flex; }
+</style>
+</head>
+<body>
+<h1>MTG Draft</h1>
+<p class="subtitle">Virtual booster draft — pick a set and deal packs to your table</p>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+<div class="panel">
+  <h2>Create a Draft Room</h2>
+
+  <label>Search set</label>
+  <input type="text" id="set-search" placeholder="Type to filter..." autocomplete="off">
+  <div id="set-list"><div class="spinner">Loading sets...</div></div>
+
+  <input type="hidden" id="set-code" value="">
+  <input type="hidden" id="set-name-val" value="">
+
+  <label>Number of seats</label>
+  <div class="seats-row" id="seats-row">
+    {% for n in range(2, 9) %}
+    <button class="seat-btn{% if n == 8 %} active{% endif %}" data-n="{{ n }}" onclick="setSeat({{ n }})">{{ n }}</button>
+    {% endfor %}
+  </div>
+
+  <button class="start" id="start-btn" onclick="createDraft()" disabled>Select a set to start</button>
+</div>
+
+<div id="loading-overlay">Creating draft room...</div>
+
+<a href="/sealed" style="font-size:0.85rem; color:#888;">Sealed Deck →</a>
+
+<script>
+let _sets = [];
+let _selectedSet = null;
+let _numSeats = 8;
+
+async function loadSets() {
+  const r = await fetch('/draft/api/sets');
+  _sets = await r.json();
+  renderSets(_sets);
+}
+
+function renderSets(sets) {
+  const list = document.getElementById('set-list');
+  if (!sets.length) { list.innerHTML = '<div class="spinner">No sets found</div>'; return; }
+  list.innerHTML = sets.map(s =>
+    `<div class="set-item" data-code="${s.code}" data-name="${s.name}" onclick="selectSet('${s.code}','${s.name.replace(/'/g,"\\'")}')">
+      <span>${s.name} <span style="color:#555">(${s.released_at?.slice(0,4) || ''})</span></span>
+      <span class="set-count">${s.card_count} cards</span>
+    </div>`
+  ).join('');
+}
+
+document.getElementById('set-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  renderSets(_sets.filter(s => s.name.toLowerCase().includes(q) || s.code.includes(q)));
+});
+
+function selectSet(code, name) {
+  _selectedSet = {code, name};
+  document.getElementById('set-code').value = code;
+  document.getElementById('set-name-val').value = name;
+  document.querySelectorAll('.set-item').forEach(el =>
+    el.classList.toggle('selected', el.dataset.code === code));
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('start-btn').textContent = `Start Draft — ${name}`;
+}
+
+function setSeat(n) {
+  _numSeats = n;
+  document.querySelectorAll('.seat-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.n) === n));
+}
+
+async function createDraft() {
+  if (!_selectedSet) return;
+  document.getElementById('loading-overlay').classList.add('show');
+  document.getElementById('start-btn').disabled = true;
+  try {
+    const r = await fetch('/draft/api/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({set_code: _selectedSet.code, set_name: _selectedSet.name, num_seats: _numSeats}),
+    });
+    const d = await r.json();
+    if (d.session_id) {
+      window.location.href = `/draft/${d.session_id}`;
+    } else {
+      alert('Error: ' + (d.error || 'Unknown'));
+      document.getElementById('loading-overlay').classList.remove('show');
+      document.getElementById('start-btn').disabled = false;
+    }
+  } catch(e) {
+    alert('Request failed');
+    document.getElementById('loading-overlay').classList.remove('show');
+    document.getElementById('start-btn').disabled = false;
+  }
+}
+
+loadSets();
+</script>
+</body>
+</html>

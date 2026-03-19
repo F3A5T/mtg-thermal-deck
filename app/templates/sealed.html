@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sealed Deck</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #12121e; color: #e0e0e0; font-family: monospace; padding: 20px; min-height: 100vh; }
+  h1 { color: #d4af37; font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.8rem; margin-bottom: 24px; }
+  .panel { background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 6px; padding: 16px; margin-bottom: 16px; max-width: 640px; }
+  .label { color: #d4af37; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  label { display: block; color: #888; font-size: 0.8rem; margin-bottom: 4px; margin-top: 12px; }
+  input[type=text] {
+    width: 100%; background: #0d0d1a; color: #e0e0e0; border: 1px solid #2a2a40;
+    border-radius: 4px; padding: 8px; font-family: monospace; font-size: 0.9rem;
+  }
+  input[type=text]:focus { outline: none; border-color: #d4af37; }
+  #set-list { max-height: 280px; overflow-y: auto; border: 1px solid #2a2a40; border-radius: 4px; background: #0d0d1a; margin-top: 4px; }
+  .set-item {
+    padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #1a1a2e;
+    display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;
+  }
+  .set-item:hover, .set-item.selected { background: #2a2a40; color: #d4af37; }
+  .set-item .set-count { color: #555; font-size: 0.75rem; }
+  .spinner { text-align: center; color: #666; padding: 16px; }
+  button.open-btn {
+    margin-top: 16px; width: 100%; padding: 12px; background: #d4af37; color: #12121e;
+    border: none; border-radius: 4px; font-size: 1rem; font-family: monospace;
+    font-weight: bold; cursor: pointer;
+  }
+  button.open-btn:hover { background: #c09b20; }
+  button.open-btn:disabled { background: #444; color: #666; cursor: not-allowed; }
+  .error { color: #e05555; background: #1a0d0d; border: 1px solid #5a1a1a; border-radius: 4px; padding: 10px; margin-bottom: 12px; font-size: 0.85rem; }
+
+  /* Pool view */
+  #pool-view { display: none; }
+  .export-box {
+    width: 100%; background: #0d0d1a; color: #e0e0e0; border: 1px solid #2a2a40;
+    border-radius: 4px; padding: 10px; font-family: monospace; font-size: 0.8rem;
+    resize: vertical; min-height: 180px;
+  }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn-copy { padding: 8px 16px; background: #d4af37; color: #12121e; font-weight: bold; border: none; border-radius: 4px; font-family: monospace; cursor: pointer; font-size: 0.85rem; }
+  .btn-copy:hover { background: #c09b20; }
+  .btn-dl { padding: 8px 16px; background: #2a2a40; color: #e0e0e0; border: none; border-radius: 4px; font-family: monospace; cursor: pointer; font-size: 0.85rem; }
+  .btn-dl:hover { background: #3a3a50; }
+  .btn-reset { padding: 8px 16px; background: #1a1a2e; color: #888; border: 1px solid #2a2a40; border-radius: 4px; font-family: monospace; cursor: pointer; font-size: 0.85rem; }
+  .btn-reset:hover { color: #e0e0e0; border-color: #d4af37; }
+  .section-header { color: #888; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; margin: 14px 0 8px; border-bottom: 1px solid #2a2a40; padding-bottom: 4px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+  .card-img { width: 100%; border-radius: 4px; display: block; }
+  .card-label { font-size: 0.62rem; color: #888; text-align: center; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  a { color: #d4af37; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<h1>Sealed Deck</h1>
+<p class="subtitle">Open 6 boosters + 1 bonus rare/mythic from your chosen set</p>
+
+<!-- Set picker -->
+<div id="pick-view">
+  <div class="panel">
+    <div class="label">Choose a Set</div>
+    <input type="text" id="set-search" placeholder="Type to filter..." autocomplete="off">
+    <div id="set-list"><div class="spinner">Loading sets...</div></div>
+    <button class="open-btn" id="open-btn" disabled onclick="openSealed()">Select a set to open</button>
+    <div id="error-msg"></div>
+  </div>
+  <a href="/">← Home</a>
+</div>
+
+<!-- Pool view -->
+<div id="pool-view">
+  <div class="panel">
+    <div class="label">Export (Moxfield / Archidekt format)</div>
+    <textarea class="export-box" id="export-text" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn-copy" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="btn-dl" onclick="downloadExport()">Download .txt</button>
+      <button class="btn-reset" onclick="resetView()">← Open Another</button>
+    </div>
+  </div>
+
+  <div class="panel" id="pool-panel">
+    <div class="label">Card Pool (<span id="pool-count">0</span> cards)</div>
+    <div id="creatures-section"></div>
+    <div id="noncreatures-section"></div>
+    <div id="lands-section"></div>
+  </div>
+</div>
+
+<script>
+let _sets = [];
+let _selectedSet = null;
+
+async function loadSets() {
+  const r = await fetch('/sealed/api/sets');
+  _sets = await r.json();
+  renderSets(_sets);
+}
+
+function renderSets(sets) {
+  const list = document.getElementById('set-list');
+  if (!sets.length) { list.innerHTML = '<div class="spinner">No sets found</div>'; return; }
+  list.innerHTML = sets.map(s =>
+    `<div class="set-item" data-code="${s.code}" onclick="selectSet('${s.code}','${s.name.replace(/'/g,"\\'")}')">
+      <span>${s.name}</span>
+      <span class="set-count">${s.card_count} cards</span>
+    </div>`
+  ).join('');
+}
+
+document.getElementById('set-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  renderSets(_sets.filter(s => s.name.toLowerCase().includes(q) || s.code.includes(q)));
+});
+
+function selectSet(code, name) {
+  _selectedSet = {code, name};
+  document.querySelectorAll('.set-item').forEach(el =>
+    el.classList.toggle('selected', el.dataset.code === code));
+  const btn = document.getElementById('open-btn');
+  btn.disabled = false;
+  btn.textContent = `Open Sealed Pool — ${name}`;
+}
+
+async function openSealed() {
+  if (!_selectedSet) return;
+  const btn = document.getElementById('open-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opening packs...';
+  document.getElementById('error-msg').innerHTML = '';
+
+  try {
+    const r = await fetch('/sealed/api/open', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({set_code: _selectedSet.code}),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      showError(d.error || 'Failed to open packs');
+      btn.disabled = false;
+      btn.textContent = `Open Sealed Pool — ${_selectedSet.name}`;
+      return;
+    }
+    renderPool(d.pool, _selectedSet.name);
+  } catch(e) {
+    showError('Request failed — check connection');
+    btn.disabled = false;
+    btn.textContent = `Open Sealed Pool — ${_selectedSet.name}`;
+  }
+}
+
+function showError(msg) {
+  document.getElementById('error-msg').innerHTML = `<div class="error" style="margin-top:10px">${msg}</div>`;
+}
+
+function renderPool(pool, setName) {
+  document.getElementById('pick-view').style.display = 'none';
+  document.getElementById('pool-view').style.display = 'block';
+  document.getElementById('pool-count').textContent = pool.length;
+
+  // Build export text
+  const counts = {};
+  pool.forEach(c => counts[c.name] = (counts[c.name] || 0) + 1);
+  const exportLines = Object.entries(counts).sort((a,b) => a[0].localeCompare(b[0])).map(([n,q]) => `${q} ${n}`);
+  document.getElementById('export-text').value = exportLines.join('\n');
+
+  // Partition by type
+  const creatures = pool.filter(c => c.type_line && c.type_line.includes('Creature'));
+  const lands = pool.filter(c => c.type_line && c.type_line.includes('Land') && !c.type_line.includes('Creature'));
+  const noncreatures = pool.filter(c => !c.type_line?.includes('Creature') && !c.type_line?.includes('Land'));
+
+  renderSection('creatures-section', `Creatures (${creatures.length})`, creatures);
+  renderSection('noncreatures-section', `Non-Creatures (${noncreatures.length})`, noncreatures);
+  renderSection('lands-section', `Lands (${lands.length})`, lands);
+}
+
+function renderSection(elId, title, cards) {
+  const el = document.getElementById(elId);
+  if (!cards.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="section-header">${title}</div>
+    <div class="card-grid">${cards.map(c =>
+      `<div>
+        <img class="card-img" src="${c.image_url}" alt="${c.name}" loading="lazy">
+        <div class="card-label" title="${c.name}">${c.name}</div>
+      </div>`
+    ).join('')}</div>`;
+}
+
+function resetView() {
+  document.getElementById('pool-view').style.display = 'none';
+  document.getElementById('pick-view').style.display = 'block';
+  const btn = document.getElementById('open-btn');
+  if (_selectedSet) {
+    btn.disabled = false;
+    btn.textContent = `Open Sealed Pool — ${_selectedSet.name}`;
+  }
+}
+
+function copyExport() {
+  const text = document.getElementById('export-text').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+  });
+}
+
+function downloadExport() {
+  const text = document.getElementById('export-text').value;
+  const blob = new Blob([text], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sealed-pool.txt';
+  a.click();
+}
+
+loadSets();
+</script>
+</body>
+</html>

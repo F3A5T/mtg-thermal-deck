@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft Room — {{ session.set_name }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #12121e; color: #e0e0e0; font-family: monospace; padding: 20px; min-height: 100vh; }
+  h1 { color: #d4af37; font-size: 1.3rem; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.8rem; margin-bottom: 20px; }
+  .panel { background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 6px; padding: 16px; margin-bottom: 16px; max-width: 600px; }
+  .label { color: #d4af37; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .room-code { font-size: 2rem; color: #d4af37; letter-spacing: 4px; text-align: center; padding: 10px; }
+  .share-url { background: #0d0d1a; border: 1px solid #2a2a40; border-radius: 4px; padding: 8px; font-size: 0.75rem; color: #888; word-break: break-all; margin-top: 8px; cursor: pointer; }
+  .share-url:hover { border-color: #d4af37; }
+  .seat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .seat-card {
+    background: #0d0d1a; border: 2px solid #2a2a40; border-radius: 6px;
+    padding: 12px; text-align: center; cursor: pointer; transition: border-color 0.2s;
+  }
+  .seat-card:hover { border-color: #d4af37; }
+  .seat-card.joined { border-color: #4a9; }
+  .seat-card .seat-num { font-size: 1.5rem; color: #d4af37; }
+  .seat-card .seat-name { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  .seat-card .seat-status { font-size: 0.7rem; color: #4a9; margin-top: 2px; }
+  .seat-card a { text-decoration: none; color: inherit; display: block; }
+  button.start {
+    width: 100%; padding: 12px; background: #d4af37; color: #12121e;
+    border: none; border-radius: 4px; font-size: 1rem; font-family: monospace;
+    font-weight: bold; cursor: pointer; margin-top: 16px;
+  }
+  button.start:hover { background: #c09b20; }
+  button.start:disabled { background: #444; color: #666; cursor: not-allowed; }
+  .status-msg { text-align: center; color: #888; font-size: 0.85rem; margin-top: 8px; min-height: 20px; }
+  .loading-bar { height: 3px; background: #2a2a40; border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .loading-bar-fill { height: 100%; background: #d4af37; width: 0%; transition: width 0.5s; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  a.back { color: #555; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<h1>{{ session.set_name }}</h1>
+<p class="subtitle">Share your seat link with each player, then start the draft.</p>
+
+<div class="panel">
+  <div class="label">Room Code</div>
+  <div class="room-code">{{ session.session_id }}</div>
+  <div class="share-url" onclick="copyUrl(this)" title="Click to copy">
+    {{ request.host_url }}draft/{{ session.session_id }}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="label">Seats — click to join as that seat</div>
+  <div class="seat-grid" id="seat-grid">
+    {% for seat in session.seats %}
+    <div class="seat-card {% if seat.joined %}joined{% endif %}" id="seat-{{ seat.index }}">
+      <a href="/draft/{{ session.session_id }}/seat/{{ seat.index }}">
+        <div class="seat-num">{{ seat.index + 1 }}</div>
+        <div class="seat-name">{{ seat.name }}</div>
+        {% if seat.joined %}<div class="seat-status">Joined</div>{% endif %}
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <button class="start" id="start-btn" onclick="startDraft()">Start Draft</button>
+  <div class="loading-bar" id="loading-bar" style="display:none"><div class="loading-bar-fill" id="loading-fill"></div></div>
+  <div class="status-msg" id="status-msg">Loading packs...</div>
+</div>
+
+<a class="back" href="/draft">← New draft</a>
+
+<script>
+const SESSION_ID = '{{ session.session_id }}';
+
+async function pollLobby() {
+  try {
+    const r = await fetch(`/draft/${SESSION_ID}/api/lobby`);
+    const d = await r.json();
+
+    // Update seat cards
+    d.seats.forEach(s => {
+      const el = document.getElementById(`seat-${s.index}`);
+      if (!el) return;
+      el.classList.toggle('joined', s.joined);
+      el.querySelector('.seat-name').textContent = s.name;
+      let statusEl = el.querySelector('.seat-status');
+      if (s.joined && !statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.className = 'seat-status';
+        statusEl.textContent = 'Joined';
+        el.querySelector('a').appendChild(statusEl);
+      }
+    });
+
+    const btn = document.getElementById('start-btn');
+    const msg = document.getElementById('status-msg');
+    const bar = document.getElementById('loading-bar');
+
+    if (d.state === 'loading') {
+      bar.style.display = 'block';
+      btn.disabled = true;
+      msg.textContent = 'Generating packs from Scryfall...';
+    } else if (d.state === 'error') {
+      btn.disabled = true;
+      msg.textContent = 'Error: ' + d.error;
+    } else if (d.state === 'drafting' || d.state === 'done') {
+      // Draft started elsewhere — redirect to seat 0 as observer or prompt
+      window.location.href = `/draft/${SESSION_ID}/seat/0`;
+    } else {
+      bar.style.display = 'none';
+      btn.disabled = false;
+      msg.textContent = `${d.seats.filter(s => s.joined).length} of ${d.num_seats} seats joined`;
+    }
+  } catch(_) {}
+  setTimeout(pollLobby, 2000);
+}
+
+async function startDraft() {
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  const r = await fetch(`/draft/${SESSION_ID}/api/start`, {method: 'POST'});
+  const d = await r.json();
+  if (!r.ok) {
+    document.getElementById('status-msg').textContent = d.error || 'Error starting draft';
+    btn.disabled = false;
+  }
+  // pollLobby will detect state change and redirect
+}
+
+function copyUrl(el) {
+  navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+    const orig = el.textContent;
+    el.textContent = 'Copied!';
+    setTimeout(() => el.textContent = orig, 1500);
+  });
+}
+
+pollLobby();
+</script>
+</body>
+</html>
